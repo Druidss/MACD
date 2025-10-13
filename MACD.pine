@@ -1,0 +1,204 @@
+//@version=5
+strategy("EMA + MACD 线段突破策略 v2 (1H Only)",
+         shorttitle="EMA21-MACD-1H",
+         overlay=true,
+         initial_capital=1000,
+         default_qty_type=strategy.cash,
+         default_qty_value=20000,
+         commission_type=strategy.commission.percent,
+         commission_value=0.1,
+         process_orders_on_close=false)
+
+// ============================================
+// 1. 用户输入
+// ============================================
+groupIndicator = "指标参数"
+ema21_length = input.int(21, "EMA 入场线", group=groupIndicator)
+ema52_length = input.int(52, "EMA 出场线", group=groupIndicator)
+macd_fast = input.int(12, "MACD 快线周期", group=groupIndicator)
+macd_slow = input.int(26, "MACD 慢线周期", group=groupIndicator)
+macd_signal = input.int(9, "MACD 信号线周期", group=groupIndicator)
+
+groupFilter = "过滤条件"
+enable_1h_filter = input.bool(true, "启用1H线段过滤", group=groupFilter)
+dif_threshold_down = input.float(300, "下跌线段DIF阈值", group=groupFilter)
+dif_threshold_up = input.float(300, "上涨线段DIF前高阈值", group=groupFilter)
+
+// ============================================
+// 2. 时间周期检查
+// ============================================
+// 确保策略只在1小时周期运行
+if timeframe.period != "60"
+    runtime.error("此策略仅支持1小时(1H)周期，请切换到1H周期图表")
+
+// ============================================
+// 3. 计算指标
+// ============================================
+// EMA
+ema21 = ta.ema(close, ema21_length)
+ema52 = ta.ema(close, ema52_length)
+
+// MACD - 直接使用ta.macd()并重命名为中文习惯
+[dif, dea, macd_hist] = ta.macd(close, macd_fast, macd_slow, macd_signal)
+// dif = 快线 (DIF)
+// dea = 慢线 (DEA)
+// macd_hist = MACD柱
+
+// ============================================
+// 3. 上涨线段识别
+// ============================================
+// DEA慢线穿越0轴
+dea_cross_above_zero = ta.crossover(dea, 0)  // 线段起点
+dea_cross_below_zero = ta.crossunder(dea, 0) // 线段终点
+
+// 记录线段状态
+var bool in_upward_segment = false
+
+// 线段起点：DEA上穿0轴
+if dea_cross_above_zero
+    in_upward_segment := true
+
+// 线段终点：DEA下穿0轴
+if dea_cross_below_zero
+    in_upward_segment := false
+
+// 判断是否刚刚完成一个完整的上涨线段
+just_completed_segment = dea_cross_below_zero
+
+// ============================================
+// 4. DIF快线前高计算
+// ============================================
+// 在上涨线段期间，持续记录DIF的最高值
+var float dif_high_in_segment = na
+
+if dea_cross_above_zero
+    // 新线段开始，重置为当前DIF值
+    dif_high_in_segment := dif
+else if in_upward_segment
+    // 线段进行中，更新最高值
+    dif_high_in_segment := math.max(dif_high_in_segment, dif)
+
+// 保存前一个线段的DIF最高值
+var float prev_segment_dif_high = na
+if dea_cross_below_zero
+    prev_segment_dif_high := dif_high_in_segment
+    // 重置当前线段的DIF最高值为下跌线段阈值300
+    dif_high_in_segment := dif_threshold_down
+
+// ============================================
+// 5. 1H周期过滤条件
+// ============================================
+// 最终的过滤条件
+bool pass_filter = true
+
+if enable_1h_filter and timeframe.period == "60"
+    // 判断当前DEA的位置
+    if dea > 0
+        // 上涨线段（DEA在0轴上）：要求前一个线段的DIF前高 > 400
+        pass_filter := not na(prev_segment_dif_high) and prev_segment_dif_high > dif_threshold_up
+    else
+        // 下跌线段（DEA在0轴下）：要求当前线段的DIF最高值 > 300
+        pass_filter := not na(dif_high_in_segment) and dif_high_in_segment > dif_threshold_down
+else
+    pass_filter := true
+
+// ============================================
+// 6. 入场和出场信号
+// ============================================
+// 检查当前持仓
+in_position = strategy.position_size > 0
+
+// 入场：价格向上突破EMA21 且 通过过滤条件
+long_entry = ta.crossover(close, ema21) and pass_filter
+
+// 出场：DEA下穿0轴
+long_exit = ta.crossunder(close, ema52)
+
+// ============================================
+// 7. 交易时间记录
+// ============================================
+// 记录每次交易的时间和价格
+var int trade_id = 0
+var string entry_time = ""
+var float entry_price = 0.0
+
+// ============================================
+// 8. 策略执行
+// ============================================
+if long_entry and not in_position
+    trade_id := trade_id + 1
+    entry_time := str.format("{0}-{1}-{2} {3}:{4}", year, str.tostring(month, "00"), str.tostring(dayofmonth, "00"), str.tostring(hour, "00"), str.tostring(minute, "00"))
+    entry_price := close
+    strategy.entry("多单", strategy.long)
+
+if long_exit and in_position
+    strategy.close("多单")
+    in_position = strategy.position_size 
+
+// ============================================
+// 9. 图表可视化
+// ============================================
+// 绘制EMA
+p_ema21 = plot(ema21, "EMA21", color=color.blue, linewidth=2)
+p_ema52 = plot(ema52, "EMA52", color=color.orange, linewidth=2)
+
+// 填充EMA之间的区域
+fill(p_ema21, p_ema52, color=ema21 > ema52 ? color.new(color.green, 90) : color.new(color.red, 90))
+
+// 标记线段状态
+bgcolor(in_upward_segment ? color.new(color.aqua, 95) : na, title="上涨线段背景")
+
+// 标记线段起点和终点
+plotshape(dea_cross_above_zero, "线段起点↑", shape.triangleup, location.belowbar, color=color.new(color.green, 0), size=size.tiny)
+plotshape(dea_cross_below_zero, "线段终点↓", shape.triangledown, location.abovebar, color=color.new(color.red, 0), size=size.tiny)
+
+// ============================================
+// 10. 信息面板
+// ============================================
+var table info = table.new(position.top_right, 2, 8)
+
+if barstate.islast
+    // 表头
+    table.cell(info, 0, 0, "指标", bgcolor=color.new(color.navy, 30), text_color=color.white, text_size=size.small)
+    table.cell(info, 1, 0, "数值", bgcolor=color.new(color.navy, 30), text_color=color.white, text_size=size.small)
+    
+    // 线段状态
+    table.cell(info, 0, 1, "上涨线段", text_color=color.white, text_size=size.small)
+    table.cell(info, 1, 1, in_upward_segment ? "✓ 进行中" : "✗ 未激活", bgcolor=in_upward_segment ? color.new(color.green, 70) : color.new(color.gray, 80), text_color=color.white, text_size=size.small)
+
+    // DEA慢线
+    table.cell(info, 0, 2, "DEA (慢线)", text_color=color.white, text_size=size.small)
+    dea_color = dea > 0 ? color.new(color.green, 70) : color.new(color.red, 70)
+    table.cell(info, 1, 2, str.tostring(dea, "#.##"), bgcolor=dea_color, text_color=color.white, text_size=size.small)
+
+    // DIF快线
+    table.cell(info, 0, 3, "DIF (快线)", text_color=color.white, text_size=size.small)
+    dif_color = dif > 0 ? color.new(color.green, 70) : color.new(color.red, 70)
+    table.cell(info, 1, 3, str.tostring(dif, "#.##"), bgcolor=dif_color, text_color=color.white, text_size=size.small)
+
+    // 当前线段DIF最高值
+    table.cell(info, 0, 4, "当前段DIF高", text_color=color.white, text_size=size.small)
+    table.cell(info, 1, 4, in_upward_segment ? str.tostring(dif_high_in_segment, "#.##") : "-", text_color=color.white, text_size=size.small)
+
+    // 前一个线段DIF最高值
+    table.cell(info, 0, 5, "前段DIF高", text_color=color.white, text_size=size.small)
+    prev_color = not na(prev_segment_dif_high) and prev_segment_dif_high > dif_threshold_up ? color.new(color.green, 70) : color.new(color.gray, 80)
+    table.cell(info, 1, 5, not na(prev_segment_dif_high) ? str.tostring(prev_segment_dif_high, "#.##") : "-", bgcolor=prev_color, text_color=color.white, text_size=size.small)
+
+    // 过滤状态
+    table.cell(info, 0, 6, "过滤状态", text_color=color.white, text_size=size.small)
+    filter_text = enable_1h_filter and timeframe.period == "60" ? (pass_filter ? "✓ 通过" : "✗ 未通过") : "未启用"
+    filter_color = enable_1h_filter and timeframe.period == "60" ? (pass_filter ? color.new(color.green, 70) : color.new(color.orange, 70)) : color.new(color.gray, 80)
+    table.cell(info, 1, 6, filter_text, bgcolor=filter_color, text_color=color.white, text_size=size.small)
+
+    // 交易次数
+    table.cell(info, 0, 7, "交易次数", text_color=color.white, text_size=size.small)
+    table.cell(info, 1, 7, str.tostring(trade_id), bgcolor=color.new(color.blue, 80), text_color=color.white, text_size=size.small)
+
+// ============================================
+// 11. 警报设置
+// ============================================
+alertcondition(long_entry, "做多信号", "{{ticker}} 突破EMA21入场 | 周期:{{interval}} | 价格:{{close}}")
+alertcondition(long_exit, "出场信号", "{{ticker}} 跌破EMA52出场 | 周期:{{interval}} | 价格:{{close}}")
+alertcondition(dea_cross_above_zero, "线段起点", "{{ticker}} MACD线段起点 (DEA上穿0轴)")
+alertcondition(dea_cross_below_zero, "线段终点", "{{ticker}} MACD线段终点 (DEA下穿0轴)")
