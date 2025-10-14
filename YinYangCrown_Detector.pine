@@ -1,0 +1,52 @@
+//@version=5
+library("YZM_YinYangCrown_Library", overlay=false)
+
+// ===== 函?：????冕 =====
+// 返回值：1 表示??到??冕，0 表示未??到
+export detectYinYangCrown(fastLength, slowLength, signalLength) =>
+    // ?算MACD指?
+    [macdLine, signalLine, histLine] = ta.macd(close, fastLength, slowLength, signalLength)
+    
+    // 定?柱体?色
+    isRed = histLine < 0       // ?色柱体（?值）
+    isGreen = histLine > 0     // ?色柱体（正值）
+    
+    // 初始化?量
+    var int state = 0          // ??机：0-初始, 1-?后首?, 2-?上升, 3-?下降
+    var float greenPeak = na   // ?色柱体的峰值
+    var int yinYangFlag = 0    // ??冕?志：1 表示??到
+    
+    // ??机??
+    if state == 0
+        // ???后首?：前一根??色，?前??色
+        if isRed[1] and isGreen
+            state := 1
+            greenPeak := histLine
+    else if state == 1
+        if isGreen
+            if histLine > greenPeak
+                greenPeak := histLine  // ?色上升，更新峰值
+            else
+                state := 3  // ?色?始下降
+        else
+            state := 0  // 不是?色，重置??
+    else if state == 3
+        if isGreen
+            if histLine > greenPeak
+                greenPeak := histLine  // 重新上升
+                state := 0
+            else
+                state := 3  // ??下降
+        else
+            // ??到?色，且之前?色有上升后下降，触???冕
+            yinYangFlag := 1
+            state := 5  // 重置??
+    else if state == 5
+        yinYangFlag := 0
+        state := 0
+    
+    else
+        state := 0  // 默?重置
+    
+    // 返回??冕?志
+    yinYangFlag

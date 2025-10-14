@@ -38,6 +38,11 @@ ema52 = ta.ema(close, ema52_length)
 // MACD
 [dif, dea, macd_hist] = ta.macd(close, macd_fast, macd_slow, macd_signal)
 
+
+// ===== 调用库函数检测阴阳冕 =====
+//yinYangCrownDetected = YZM.detectYinYangCrown(fastLength, slowLength, signalLength)
+//if yinYangCrownDetected == 1
+
 // ============================================
 // 4. 上涨线段识别（带延迟确认）
 // ============================================
