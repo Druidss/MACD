@@ -1,6 +1,6 @@
 //@version=5
 strategy("EMA + MACD 线段突破策略",
-         shorttitle="EMA21-MACD-1H",
+         shorttitle="EMA21-MACD-MTF",
          overlay=true,
          initial_capital=1000,
          default_qty_type=strategy.cash,
@@ -22,47 +22,63 @@ macd_signal = input.int(9, "MACD 信号线周期", group=groupIndicator)
 groupSegment = "线段过滤"
 delay_bars = input.int(25, "下跌线段确认K线数", minval=1, group=groupSegment, tooltip="DEA下穿0轴后，等待N根K线才确认为下跌线段")
 
-// ============================================
-// 2. 时间周期检查
-// ============================================
-if timeframe.period != "60"
-    runtime.error("此策略仅支持1小时(1H)周期，请切换到1H周期图表")
+groupTakeProfit = "止盈参数"
+lookback_bars = input.int(20, "前高回溯K线数", minval=5, group=groupTakeProfit, tooltip="定义'近期前高'：入场后向前回溯N根K线的最高点")
+
+groupFilter = "入场过滤条件"
+max_4h_dif = input.float(1500.0, "4小时MACD快线上限", group=groupFilter, tooltip="4小时周期的MACD DIF值不能超过此阈值")
+cooldown_bars = input.int(50, "止损后冷却K线数", minval=1, group=groupFilter, tooltip="止损后N根K线内不再开新仓")
+
+groupBelowZero = "零轴下突破"
+enable_below_zero = input.bool(true, "启用零轴下突破", group=groupBelowZero)
+dea_threshold = input.float(-60.0, "DEA阈值", group=groupBelowZero, tooltip="DEA高于此值时视为潜在上涨区间")
+below_zero_timeout = input.int(8, "突破超时K线数", minval=1, group=groupBelowZero, tooltip="DEA高于阈值后，N根K线内必须上穿0轴")
+
+
+
 
 // ============================================
 // 3. 计算指标
 // ============================================
-// EMA
+// 当前周期 EMA
 ema21 = ta.ema(close, ema21_length)
 ema52 = ta.ema(close, ema52_length)
 
-// MACD
+// 当前周期 MACD
 [dif, dea, macd_hist] = ta.macd(close, macd_fast, macd_slow, macd_signal)
 
-
-// ===== 调用库函数检测阴阳冕 =====
-//yinYangCrownDetected = YZM.detectYinYangCrown(fastLength, slowLength, signalLength)
-//if yinYangCrownDetected == 1
+// 4小时周期 MACD DIF（快线）
+[dif_4h, dea_4h, macd_hist_4h] = request.security(syminfo.tickerid, "240", ta.macd(close, macd_fast, macd_slow, macd_signal))
 
 // ============================================
-// 4. 上涨线段识别（带延迟确认）
+// 4. 上涨线段识别（带延迟确认 + 零轴下突破）
 // ============================================
 dea_cross_above_zero = ta.crossover(dea, 0)
 dea_cross_below_zero = ta.crossunder(dea, 0)
 
-// 线段状态：true=上涨线段或延迟期，false=下跌线段
+// 线段状态：true=上涨线段或延迟期或零轴下潜在区间，false=下跌线段
 var bool in_tradable_segment = false
 // 延迟计数器：记录DEA下穿0轴后经过的K线数
 var int delay_counter = 0
+
+// 零轴下突破相关
+var bool in_below_zero_attempt = false  // 是否在零轴下尝试突破中
+var int below_zero_counter = 0  // 零轴下突破计数器
+dea_above_threshold = dea > dea_threshold and dea < 0  // DEA在零轴下且高于阈值
 
 if dea_cross_above_zero
     // DEA上穿0轴：进入上涨线段
     in_tradable_segment := true
     delay_counter := 0
+    in_below_zero_attempt := false
+    below_zero_counter := 0
 
 if dea_cross_below_zero
     // DEA下穿0轴：开始延迟计数，暂时还算可交易期
     delay_counter := 1
     in_tradable_segment := true
+    in_below_zero_attempt := false
+    below_zero_counter := 0
 else if delay_counter > 0 and delay_counter < delay_bars
     // 延迟期内：继续计数
     delay_counter := delay_counter + 1
@@ -71,28 +87,114 @@ else if delay_counter >= delay_bars
     // 延迟期结束：确认为下跌线段
     in_tradable_segment := false
 
+// 零轴下突破逻辑
+if enable_below_zero and dea < 0
+    if dea_above_threshold and not in_below_zero_attempt
+        // 触发零轴下突破尝试
+        in_below_zero_attempt := true
+        below_zero_counter := 1
+        in_tradable_segment := true  // 进入潜在上涨区间
+    else if in_below_zero_attempt
+        below_zero_counter := below_zero_counter + 1
+        if below_zero_counter <= below_zero_timeout
+            // 在超时期内，保持可交易状态
+            in_tradable_segment := true
+        else
+            // 超时未上穿0轴，失败，回到下跌区间
+            in_below_zero_attempt := false
+            below_zero_counter := 0
+            in_tradable_segment := false
+
 // 判断是否在延迟期
 in_delay_period = delay_counter > 0 and delay_counter < delay_bars
+// 判断是否在零轴下突破尝试期
+in_below_zero_period = in_below_zero_attempt and below_zero_counter > 0
+
+// ============================================
+// 定义三个阶段（用于背景色显示）
+// ============================================
+// 上涨线段：DEA在0轴上方，或成功从零轴下突破进入上涨
+is_uptrend_segment = dea > 0 and in_tradable_segment and delay_counter == 0 and not in_below_zero_period
+
+// 过渡线段：延迟期（DEA下穿0轴后的25根K线）或 零轴下突破尝试期
+is_transition_segment = in_delay_period or in_below_zero_period
+
+// 下跌线段：不在可交易区间，即延迟期结束且未处于零轴下突破
+is_downtrend_segment = not in_tradable_segment
 
 // ============================================
 // 5. 入场和出场信号
 // ============================================
 in_position = strategy.position_size > 0
 
-// 入场：价格向上突破EMA21 且 在可交易线段内（上涨线段或延迟期）
-long_entry = ta.crossover(close, ema21) and in_tradable_segment
+// 止损冷却机制
+var int last_stop_loss_bar = 0  // 记录上次止损的Bar索引
+var bool in_cooldown = false  // 是否在冷却期
 
-// 出场：价格跌破EMA52
-long_exit = ta.crossunder(close, ema52)
+// 检查是否在冷却期
+if not na(last_stop_loss_bar) and last_stop_loss_bar > 0
+    bars_since_stop = bar_index - last_stop_loss_bar
+    in_cooldown := bars_since_stop < cooldown_bars
+else
+    in_cooldown := false
+
+// 入场条件：
+// 1. 价格向上突破EMA21
+// 2. 在可交易线段内（上涨线段或延迟期或零轴下突破期）
+// 3. 4小时MACD DIF <= 1500
+// 4. 不在冷却期（止损后50根K线内不开仓）
+macd_4h_filter = dif_4h <= max_4h_dif
+cooldown_filter = not in_cooldown
+
+long_entry = ta.crossover(close, ema21) and in_tradable_segment and macd_4h_filter and cooldown_filter
+
+// 记录入场时的Bar索引，用于计算前高
+var int entry_bar_index = 0
+if long_entry and not in_position
+    entry_bar_index := bar_index
+
+// 计算近期前高：
+// 定义：从入场K线开始，向前回溯lookback_bars根K线的最高价
+// 例如：lookback_bars=20，则取入场前20根K线的最高点作为前高
+var float recent_high = na
+if in_position
+    // 计算从入场点往前lookback_bars根K线的最高价
+    bars_since_entry = bar_index - entry_bar_index
+    if bars_since_entry == 0
+        // 刚入场时，计算入场前lookback_bars根K线的最高价
+        recent_high := ta.highest(high, lookback_bars)[1]  // [1]表示不包括当前K线
+
+// 出场条件：
+// 第一止盈：价格突破近期前高（主动止盈）- 平50%
+var bool first_tp_triggered = false
+take_profit_1 = in_position and not first_tp_triggered and not na(recent_high) and close > recent_high
+
+// 第二止盈：价格跌破EMA52（被动止盈）- 平剩余50%
+take_profit_2 = in_position and ta.crossunder(close, ema52)
+
+// 检测是否为止损（价格跌破EMA52且未触发第一次止盈视为止损）
+is_stop_loss = take_profit_2 and not first_tp_triggered
 
 // ============================================
 // 6. 策略执行
 // ============================================
 if long_entry and not in_position
     strategy.entry("多单", strategy.long)
+    first_tp_triggered := false  // 重置止盈状态
 
-if long_exit and in_position
-    strategy.close("多单")
+// 第一次止盈：平50%仓位
+if take_profit_1
+    strategy.close("多单", qty_percent=50, comment="止盈50%")
+    first_tp_triggered := true
+
+// 第二次止盈：平掉剩余仓位
+if take_profit_2
+    if is_stop_loss
+        strategy.close("多单", comment="止损")
+        last_stop_loss_bar := bar_index  // 记录止损时间
+    else
+        strategy.close("多单", comment="止盈剩余")
+    first_tp_triggered := false  // 重置状态
 
 // ============================================
 // 7. 图表可视化
@@ -104,22 +206,22 @@ p_ema52 = plot(ema52, "EMA52", color=color.orange, linewidth=2)
 // 填充EMA之间的区域
 fill(p_ema21, p_ema52, color=ema21 > ema52 ? color.new(color.green, 90) : color.new(color.red, 90))
 
-// 标记线段状态
-// 上涨线段：浅蓝色背景
-// 延迟期：浅黄色背景
-// 下跌线段：无背景
-segment_color = in_tradable_segment ? (in_delay_period ? color.new(color.yellow, 95) : color.new(color.aqua, 95)) : na
-bgcolor(segment_color, title="线段背景")
+// 绘制近期前高参考线（仅在持仓时显示）
+plot(in_position ? recent_high : na, "近期前高", color=color.red, linewidth=1, style=plot.style_circles)
 
-// 标记线段起点和终点
-plotshape(dea_cross_above_zero, "线段起点↑", shape.triangleup, location.belowbar, color=color.new(color.green, 0), size=size.tiny)
-plotshape(dea_cross_below_zero, "延迟期开始↓", shape.triangledown, location.abovebar, color=color.new(color.orange, 0), size=size.tiny)
-plotshape(delay_counter == delay_bars, "下跌线段确认", shape.xcross, location.abovebar, color=color.new(color.red, 0), size=size.small)
+// 三个阶段的背景色显示
+// 上涨线段：浅绿色
+// 过渡线段：浅黄色（包括延迟期和零轴下突破期）
+// 下跌线段：浅红色
+segment_bgcolor = is_uptrend_segment ? color.new(color.green, 92) :
+                  is_transition_segment ? color.new(color.yellow, 92) :
+                  is_downtrend_segment ? color.new(color.red, 92) : na
+
+bgcolor(segment_bgcolor, title="线段背景色")
 
 // ============================================
 // 8. 警报设置
 // ============================================
 alertcondition(long_entry, "做多信号", "{{ticker}} 突破EMA21入场 | 周期:{{interval}} | 价格:{{close}}")
-alertcondition(long_exit, "出场信号", "{{ticker}} 跌破EMA52出场 | 周期:{{interval}} | 价格:{{close}}")
-alertcondition(dea_cross_above_zero, "线段起点", "{{ticker}} MACD线段起点 (DEA上穿0轴)")
-alertcondition(dea_cross_below_zero, "线段终点", "{{ticker}} MACD线段终点 (DEA下穿0轴)")
+alertcondition(take_profit_1, "前高止盈", "{{ticker}} 突破前高止盈 | 周期:{{interval}} | 价格:{{close}}")
+alertcondition(take_profit_2, "EMA52止盈", "{{ticker}} 跌破EMA52止盈 | 周期:{{interval}} | 价格:{{close}}")
