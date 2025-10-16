@@ -23,10 +23,6 @@ main: 从ema 52 穿过 ema 21，52在21之下，macd线呈上升趋势进场
 
 
 
-
-
-
-
 ### 2025-10-14
 
 1. 分批平仓功能 (MACD.pine:175-187)
@@ -58,35 +54,37 @@ DEA高于阈值（默认 -60）
 
 
 
-## 复盘逻辑: 
+# 复盘逻辑: 
 
-### 高盈亏比场景:
+## 高盈亏比场景:
 
 ema21 52 趋势排列后, 第一次回踩
 
 2025-05-30
 
-![Screenshot 2025-10-16 at 21.18.44](/Users/adrian/Desktop/BA/MACD/attach/README/Screenshot 2025-10-16 at 21.18.44.png)
+![Screenshot 2025-10-16 at 21.18.44](attach/README/Screenshot%202025-10-16%20at%2021.18.44.png)
 
 
 
 2025-07-09
 
-![Screenshot 2025-10-16 at 21.22.01](/Users/adrian/Desktop/BA/MACD/attach/README/Screenshot 2025-10-16 at 21.22.01.png)
+![Screenshot 2025-10-16 at 21.22.01](attach/README/Screenshot%202025-10-16%20at%2021.22.01.png)
 
 
 
 
 
-## 需要人工过滤的零轴粘合场景: 
+## 需要人工过滤的零轴粘合场景:
 
 2025-05-14
 
-![Screenshot 2025-10-16 at 21.23.32](/Users/adrian/Desktop/BA/MACD/attach/README/Screenshot 2025-10-16 at 21.23.32.png)
+![Screenshot 2025-10-16 at 21.23.32](attach/README/Screenshot%202025-10-16%20at%2021.23.32.png)
 
 
 
-第二次止盈逻辑介绍:
+## 第二次止盈逻辑介绍:
 
+2025-08-07
 
+![Screenshot 2025-10-16 at 21.36.45](attach/README/Screenshot 2025-10-16 at 21.36.45.png)
 
