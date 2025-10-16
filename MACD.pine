@@ -14,7 +14,7 @@ strategy("EMA + MACD 线段突破策略",
 // ============================================
 groupIndicator = "指标参数"
 ema21_length = input.int(21, "EMA 入场线", group=groupIndicator)
-ema52_length = input.int(52, "EMA 出场线", group=groupIndicator)
+ema52_length = input.int(52, "EMA 止损线", group=groupIndicator)
 macd_fast = input.int(12, "MACD 快线周期", group=groupIndicator)
 macd_slow = input.int(26, "MACD 慢线周期", group=groupIndicator)
 macd_signal = input.int(9, "MACD 信号线周期", group=groupIndicator)
@@ -27,7 +27,6 @@ lookback_bars = input.int(20, "前高回溯K线数", minval=5, group=groupTakePr
 
 groupFilter = "入场过滤条件"
 max_4h_dif = input.float(1500.0, "4小时MACD快线上限", group=groupFilter, tooltip="4小时周期的MACD DIF值不能超过此阈值")
-cooldown_bars = input.int(50, "止损后冷却K线数", minval=1, group=groupFilter, tooltip="止损后N根K线内不再开新仓")
 
 groupBelowZero = "零轴下突破"
 enable_below_zero = input.bool(true, "启用零轴下突破", group=groupBelowZero)
@@ -111,90 +110,77 @@ in_delay_period = delay_counter > 0 and delay_counter < delay_bars
 in_below_zero_period = in_below_zero_attempt and below_zero_counter > 0
 
 // ============================================
-// 定义三个阶段（用于背景色显示）
+// 定义四个阶段（用于背景色显示）
 // ============================================
-// 上涨线段：DEA在0轴上方，或成功从零轴下突破进入上涨
+// 1. 上涨线段：DEA在0轴上方
 is_uptrend_segment = dea > 0 and in_tradable_segment and delay_counter == 0 and not in_below_zero_period
 
-// 过渡线段：延迟期（DEA下穿0轴后的25根K线）或 零轴下突破尝试期
-is_transition_segment = in_delay_period or in_below_zero_period
+// 2. 浅橙过渡段：上涨线段后跌破（延迟期）
+is_transition_after_uptrend = in_delay_period
 
-// 下跌线段：不在可交易区间，即延迟期结束且未处于零轴下突破
+// 3. 浅紫色突破尝试段：零轴下突破尝试期，DEA < 80（实际是DEA < -80或在阈值范围内）
+is_purple_breakout_attempt = in_below_zero_period and dea < 80
+
+// 4. 下跌线段：不在可交易区间，即延迟期结束且未处于零轴下突破
 is_downtrend_segment = not in_tradable_segment
 
 // ============================================
 // 5. 入场和出场信号
 // ============================================
 in_position = strategy.position_size > 0
+in_short_position = strategy.position_size < 0
+has_any_position = in_position or in_short_position
 
-// 止损冷却机制
-var int last_stop_loss_bar = 0  // 记录上次止损的Bar索引
-var bool in_cooldown = false  // 是否在冷却期
+// 追踪是否已经开过第一单
+var bool first_trade_opened = false
 
-// 检查是否在冷却期
-if not na(last_stop_loss_bar) and last_stop_loss_bar > 0
-    bars_since_stop = bar_index - last_stop_loss_bar
-    in_cooldown := bars_since_stop < cooldown_bars
-else
-    in_cooldown := false
-
-// 入场条件：
+// 多单入场条件：
 // 1. 价格向上突破EMA21
-// 2. 在可交易线段内（上涨线段或延迟期或零轴下突破期）
+// 2. 在上涨线段或紫色突破尝试段（不包括橙色过渡段）
 // 3. 4小时MACD DIF <= 1500
-// 4. 不在冷却期（止损后50根K线内不开仓）
+// 4. 没有持仓
 macd_4h_filter = dif_4h <= max_4h_dif
-cooldown_filter = not in_cooldown
+in_long_signal_zone = is_uptrend_segment or is_purple_breakout_attempt
 
-long_entry = ta.crossover(close, ema21) and in_tradable_segment and macd_4h_filter and cooldown_filter
+long_entry = ta.crossover(close, ema21) and in_long_signal_zone and macd_4h_filter and not has_any_position
 
-// 记录入场时的Bar索引，用于计算前高
-var int entry_bar_index = 0
-if long_entry and not in_position
-    entry_bar_index := bar_index
-
-// 计算近期前高：
-// 定义：从入场K线开始，向前回溯lookback_bars根K线的最高价
-// 例如：lookback_bars=20，则取入场前20根K线的最高点作为前高
-var float recent_high = na
-if in_position
-    // 计算从入场点往前lookback_bars根K线的最高价
-    bars_since_entry = bar_index - entry_bar_index
-    if bars_since_entry == 0
-        // 刚入场时，计算入场前lookback_bars根K线的最高价
-        recent_high := ta.highest(high, lookback_bars)[1]  // [1]表示不包括当前K线
+// 空单入场条件：
+// 1. 只在下跌线段中做空
+// 2. 价格向下突破EMA21
+// 3. 没有持仓
+// 4. 必须已经开过第一单（多单）
+short_entry = ta.crossunder(close, ema21) and is_downtrend_segment and not has_any_position and first_trade_opened
 
 // 出场条件：
-// 第一止盈：价格突破近期前高（主动止盈）- 平50%
-var bool first_tp_triggered = false
-take_profit_1 = in_position and not first_tp_triggered and not na(recent_high) and close > recent_high
+// 提前计算crossover/crossunder，避免在if语句中调用
+close_cross_under_ema52 = ta.crossunder(close, ema52)
+close_cross_over_ema52 = ta.crossover(close, ema52)
 
-// 第二止盈：价格跌破EMA52（被动止盈）- 平剩余50%
-take_profit_2 = in_position and ta.crossunder(close, ema52)
+// 多单止损：跌破EMA52即止损
+long_stop_loss = in_position and close_cross_under_ema52
 
-// 检测是否为止损（价格跌破EMA52且未触发第一次止盈视为止损）
-is_stop_loss = take_profit_2 and not first_tp_triggered
+// 空单止损：突破EMA52即止损
+short_stop_loss = in_short_position and close_cross_over_ema52
 
 // ============================================
 // 6. 策略执行
 // ============================================
-if long_entry and not in_position
+// 多单入场
+if long_entry
     strategy.entry("多单", strategy.long)
-    first_tp_triggered := false  // 重置止盈状态
+    first_trade_opened := true  // 标记第一单已开
 
-// 第一次止盈：平50%仓位
-if take_profit_1
-    strategy.close("多单", qty_percent=50, comment="止盈50%")
-    first_tp_triggered := true
+// 空单入场
+if short_entry
+    strategy.entry("空单", strategy.short)
 
-// 第二次止盈：平掉剩余仓位
-if take_profit_2
-    if is_stop_loss
-        strategy.close("多单", comment="止损")
-        last_stop_loss_bar := bar_index  // 记录止损时间
-    else
-        strategy.close("多单", comment="止盈剩余")
-    first_tp_triggered := false  // 重置状态
+// 多单止损出场
+if long_stop_loss
+    strategy.close("多单", comment="多单止损")
+
+// 空单止损出场
+if short_stop_loss
+    strategy.close("空单", comment="空单止损")
 
 // ============================================
 // 7. 图表可视化
@@ -206,15 +192,15 @@ p_ema52 = plot(ema52, "EMA52", color=color.orange, linewidth=2)
 // 填充EMA之间的区域
 fill(p_ema21, p_ema52, color=ema21 > ema52 ? color.new(color.green, 90) : color.new(color.red, 90))
 
-// 绘制近期前高参考线（仅在持仓时显示）
-plot(in_position ? recent_high : na, "近期前高", color=color.red, linewidth=1, style=plot.style_circles)
 
-// 三个阶段的背景色显示
-// 上涨线段：浅绿色
-// 过渡线段：浅黄色（包括延迟期和零轴下突破期）
-// 下跌线段：浅红色
+// 四个阶段的背景色显示
+// 1. 上涨线段：浅绿色
+// 2. 浅橙过渡段：上涨线段后跌破（延迟期）
+// 3. 浅紫色突破尝试段：零轴下突破尝试期，DEA < 80
+// 4. 下跌线段：浅红色
 segment_bgcolor = is_uptrend_segment ? color.new(color.green, 92) :
-                  is_transition_segment ? color.new(color.yellow, 92) :
+                  is_transition_after_uptrend ? color.new(color.orange, 92) :
+                  is_purple_breakout_attempt ? color.new(color.purple, 92) :
                   is_downtrend_segment ? color.new(color.red, 92) : na
 
 bgcolor(segment_bgcolor, title="线段背景色")
@@ -222,6 +208,7 @@ bgcolor(segment_bgcolor, title="线段背景色")
 // ============================================
 // 8. 警报设置
 // ============================================
-alertcondition(long_entry, "做多信号", "{{ticker}} 突破EMA21入场 | 周期:{{interval}} | 价格:{{close}}")
-alertcondition(take_profit_1, "前高止盈", "{{ticker}} 突破前高止盈 | 周期:{{interval}} | 价格:{{close}}")
-alertcondition(take_profit_2, "EMA52止盈", "{{ticker}} 跌破EMA52止盈 | 周期:{{interval}} | 价格:{{close}}")
+alertcondition(long_entry, "做多信号", "{{ticker}} 突破EMA21做多入场 | 周期:{{interval}} | 价格:{{close}}")
+alertcondition(short_entry, "做空信号", "{{ticker}} 跌破EMA21做空入场 | 周期:{{interval}} | 价格:{{close}}")
+alertcondition(long_stop_loss, "多单止损", "{{ticker}} 多单止损出场 | 周期:{{interval}} | 价格:{{close}}")
+alertcondition(short_stop_loss, "空单止损", "{{ticker}} 空单止损出场 | 周期:{{interval}} | 价格:{{close}}")
