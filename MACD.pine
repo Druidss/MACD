@@ -22,9 +22,6 @@ macd_signal = input.int(9, "MACD 信号线周期", group=groupIndicator)
 groupSegment = "线段过滤"
 delay_bars = input.int(25, "下跌线段确认K线数", minval=1, group=groupSegment, tooltip="DEA下穿0轴后，等待N根K线才确认为下跌线段")
 
-groupTakeProfit = "止盈参数"
-lookback_bars = input.int(20, "前高回溯K线数", minval=5, group=groupTakeProfit, tooltip="定义'近期前高'：入场后向前回溯N根K线的最高点")
-
 groupFilter = "入场过滤条件"
 max_4h_dif = input.float(1500.0, "4小时MACD快线上限", group=groupFilter, tooltip="4小时周期的MACD DIF值不能超过此阈值")
 
@@ -55,6 +52,9 @@ ema52 = ta.ema(close, ema52_length)
 dea_cross_above_zero = ta.crossover(dea, 0)
 dea_cross_below_zero = ta.crossunder(dea, 0)
 
+// EMA关系
+ema21_below_ema52 = ema21 < ema52
+
 // 线段状态：true=上涨线段或延迟期或零轴下潜在区间，false=下跌线段
 var bool in_tradable_segment = false
 // 延迟计数器：记录DEA下穿0轴后经过的K线数
@@ -79,9 +79,14 @@ if dea_cross_below_zero
     in_below_zero_attempt := false
     below_zero_counter := 0
 else if delay_counter > 0 and delay_counter < delay_bars
-    // 延迟期内：继续计数
+    // 延迟期内：继续计数，但检查EMA21是否跌破EMA52
     delay_counter := delay_counter + 1
-    in_tradable_segment := true
+    if ema21_below_ema52
+        // EMA21跌破EMA52：立即确认为下跌线段
+        in_tradable_segment := false
+        delay_counter := 0
+    else
+        in_tradable_segment := true
 else if delay_counter >= delay_bars
     // 延迟期结束：确认为下跌线段
     in_tradable_segment := false
