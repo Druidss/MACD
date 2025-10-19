@@ -23,7 +23,7 @@ macd_signal = input.int(9, "MACD 信号线周期", group=groupIndicator)
 
 groupSegment = "线段过滤"
 delay_bars = input.int(25, "下跌线段确认K线数", minval=1, group=groupSegment, tooltip="DEA下穿0轴后，等待N根K线才确认为下跌线段")
-min_downtrend_bars = input.int(10, "上涨线段确认最短K线数", minval=1, group=groupSegment, tooltip="DEA上穿0轴后，等待N根K线才确认为上涨线段")
+min_downtrend_bars = input.int(2, "上涨线段确认最短K线数", minval=1, group=groupSegment, tooltip="DEA上穿0轴后，等待N根K线才确认为上涨线段")
 
 
 groupFilter = "入场过滤条件"
@@ -169,9 +169,9 @@ var bool first_trade_opened = false
 // 4. 没有持仓
 macd_4h_filter = dif_4h <= max_4h_dif
 in_long_signal_zone = is_uptrend_segment or is_purple_breakout_attempt
-ema52_plus_300 = ema52 + 300
+ema21 = ema21
 
-long_entry = ta.crossover(close, ema52_plus_300) and in_long_signal_zone and macd_4h_filter and not has_any_position
+long_entry = ta.crossover(close, ema21) and in_long_signal_zone and macd_4h_filter and not has_any_position
 
 // 空单入场条件：
 // 1. 只在下跌线段中做空
