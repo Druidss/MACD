@@ -4,7 +4,7 @@ strategy("EMA + MACD 线段突破策略",
          overlay=true,
          initial_capital=1000,
          default_qty_type=strategy.cash,
-         default_qty_value=20000,
+         default_qty_value=5000,
          commission_type=strategy.commission.percent,
          commission_value=0.1,
          process_orders_on_close=false)
@@ -13,24 +13,23 @@ strategy("EMA + MACD 线段突破策略",
 // 1. 用户输入
 // ============================================
 groupIndicator = "指标参数"
-ema21_length = input.int(21, "EMA 入场线", group=groupIndicator)
-ema52_length = input.int(52, "EMA 止损线", group=groupIndicator)
+ema21_length = input.int(21, "EMA21", group=groupIndicator)
+ema52_length = input.int(52, "EMA52", group=groupIndicator)
+ema144_length = input.int(144, "EMA144", group=groupIndicator)
+
 macd_fast = input.int(12, "MACD 快线周期", group=groupIndicator)
 macd_slow = input.int(26, "MACD 慢线周期", group=groupIndicator)
 macd_signal = input.int(9, "MACD 信号线周期", group=groupIndicator)
 
 groupSegment = "线段过滤"
 delay_bars = input.int(25, "下跌线段确认K线数", minval=1, group=groupSegment, tooltip="DEA下穿0轴后，等待N根K线才确认为下跌线段")
+min_downtrend_bars = input.int(20, "上涨线段确认最短K线数", minval=1, group=groupSegment, tooltip="下跌线段持续超过此K线数后才能进入上涨线段")
 
-groupTakeProfit = "止盈参数"
-lookback_bars = input.int(20, "前高回溯K线数", minval=5, group=groupTakeProfit, tooltip="定义'近期前高'：入场后向前回溯N根K线的最高点")
 
 groupFilter = "入场过滤条件"
 max_4h_dif = input.float(1500.0, "4小时MACD快线上限", group=groupFilter, tooltip="4小时周期的MACD DIF值不能超过此阈值")
-min_4h_dea = input.float(-1000.0, "4小时DEA下限", group=groupFilter, tooltip="4小时DEA低于此值时不开空单")
+min_4h_dea = input.float(-1500.0, "4小时DEA下限", group=groupFilter, tooltip="4小时DEA低于此值时不开空单")
 
-groupDowntrend = "下跌线段过滤"
-min_downtrend_bars = input.int(20, "下跌线段最短K线数", minval=1, group=groupDowntrend, tooltip="下跌线段持续超过此K线数后才能进入上涨线段")
 
 groupBelowZero = "零轴下突破"
 enable_below_zero = input.bool(true, "启用零轴下突破", group=groupBelowZero)
@@ -46,6 +45,7 @@ below_zero_timeout = input.int(8, "突破超时K线数", minval=1, group=groupBe
 // 当前周期 EMA
 ema21 = ta.ema(close, ema21_length)
 ema52 = ta.ema(close, ema52_length)
+ema144 = ta.ema(close, ema144_length)
 
 // 当前周期 MACD
 [dif, dea, macd_hist] = ta.macd(close, macd_fast, macd_slow, macd_signal)
@@ -205,9 +205,9 @@ if short_stop_loss
 // 绘制EMA
 p_ema21 = plot(ema21, "EMA21", color=color.blue, linewidth=2)
 p_ema52 = plot(ema52, "EMA52", color=color.orange, linewidth=2)
+p_ema144 = plot(ema144, "EMA144", color=color.gray, linewidth=2)
 
-// 填充EMA之间的区域
-fill(p_ema21, p_ema52, color=ema21 > ema52 ? color.new(color.green, 90) : color.new(color.red, 90))
+
 
 
 // 四个阶段的背景色显示
