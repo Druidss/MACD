@@ -30,7 +30,7 @@ var float stopLoss = na
 var bool hadPullback = false  // 是否已经发生过回调
 
 // 无仓位时的逻辑：等待跳空进场信号
-if isUptrend and strategy.position_size == 0
+if isUptrend and strategy.position_size == 0 and ema21 > ema52
     // 检测绿柱回调：当前柱子 < 上一根柱子
     if histogram >= 0 and histogram[1] >= 0 and histogram < histogram[1]
         hadPullback := true
@@ -54,9 +54,9 @@ if isUptrend and strategy.position_size == 0
             hadPullback := false  // 重置回调标记
 
 // 零轴附近阈值进场逻辑：DEA 在零轴附近且红柱缩量
-if strategy.position_size == 0
-    // DEA 在零轴附近：math.abs(dea) <= zeroAxisThreshold
-    bool nearZeroAxis = math.abs(dea) <= zeroAxisThreshold
+if strategy.position_size == 0 and ema21 > ema52 and dea > 0
+    // DEA 在零轴附近：dea <= zeroAxisThreshold (DEA必须大于0)
+    bool nearZeroAxis = dea > 0 and dea <= zeroAxisThreshold
 
     // 红柱缩量：当前红柱 < 上一根红柱（红柱绝对值变小）
     bool redShrinking = histogram < 0 and histogram[1] < 0 and histogram > histogram[1]
@@ -78,21 +78,18 @@ if strategy.position_size > 0
         else if histogram < 0 and histogram[1] < 0 and histogram > histogram[1]
             hadPullback := true
 
-        // 回调后再次跳空：上移止损到跳空K线的open减去止损幅度
+        // 回调后再次跳空：上移止损到前一根K线的open减去止损幅度
         if hadPullback
-            // 绿柱跳空：回调后 > 前一根
+            // 绿柱跳空：回调后 > 前一根（绿柱仍然是绿柱）
             if histogram >= 0 and histogram[1] >= 0 and histogram > histogram[1]
-                stopLoss := open - stopLossOffset
+                stopLoss := open[1] - stopLossOffset  // 使用前一根K线的open
                 hadPullback := false  // 重置回调标记，等待下一次回调
-                label.new(bar_index, low, "上移止损\n至:" + str.tostring(stopLoss, "#.##"),
-                         style=label.style_label_up, color=color.blue, textcolor=color.white, size=size.tiny)
 
-            // 红柱跳空：回调后 < 前一根
+            // 红柱跳空：回调后 < 前一根（红柱仍然是红柱，且变小）
+            // 排除由绿转红的情况：histogram[1] 必须也是红柱
             else if histogram < 0 and histogram[1] < 0 and histogram < histogram[1]
-                stopLoss := open - stopLossOffset
+                stopLoss := open[1] - stopLossOffset  // 使用前一根K线的open
                 hadPullback := false  // 重置回调标记，等待下一次回调
-                label.new(bar_index, low, "上移止损\n至:" + str.tostring(stopLoss, "#.##"),
-                         style=label.style_label_up, color=color.blue, textcolor=color.white, size=size.tiny)
 
     // 执行止损：价格跌破止损线
     if close < stopLoss
