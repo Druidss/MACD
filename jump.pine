@@ -1,0 +1,115 @@
+//@version=5
+strategy("MACD能量柱跳空策略", overlay=true, initial_capital=50, default_qty_type=strategy.cash, default_qty_value=100, commission_type=strategy.commission.percent, commission_value=0.1)
+
+// MACD 参数
+fastLength = input.int(12, "快线周期", minval=1)
+slowLength = input.int(26, "慢线周期", minval=1)
+signalLength = input.int(9, "信号线周期", minval=1)
+
+// 止损幅度参数
+stopLossOffset = input.float(300, "止损幅度", minval=0)
+
+// 零轴附近阈值参数
+zeroAxisThreshold = input.float(300, "零轴附近阈值", minval=0)
+
+// EMA 参数
+ema21 = ta.ema(close, 21)
+ema52 = ta.ema(close, 52)
+
+// 计算 MACD
+[macdLine, signalLine, histogram] = ta.macd(close, fastLength, slowLength, signalLength)
+
+// DEA 就是 signalLine
+dea = signalLine
+
+// 判断上涨线段：DEA > 0
+isUptrend = dea > 0
+
+// 跟踪变量
+var float stopLoss = na
+var bool hadPullback = false  // 是否已经发生过回调
+
+// 无仓位时的逻辑：等待跳空进场信号
+if isUptrend and strategy.position_size == 0
+    // 检测绿柱回调：当前柱子 < 上一根柱子
+    if histogram >= 0 and histogram[1] >= 0 and histogram < histogram[1]
+        hadPullback := true
+
+    // 检测红柱回调：当前柱子 > 上一根柱子（红柱变大，回调）
+    else if histogram < 0 and histogram[1] < 0 and histogram > histogram[1]
+        hadPullback := true
+
+    // 跳空进场：回调后再次上涨突破，且必须是阳线
+    if hadPullback and close > open
+        // 绿柱跳空：回调后 > 前一根
+        if histogram >= 0 and histogram[1] >= 0 and histogram > histogram[1]
+            strategy.entry("Long", strategy.long)
+            stopLoss := open - stopLossOffset  // 止损设在开盘价减去止损幅度
+            hadPullback := false  // 重置回调标记
+
+        // 红柱跳空：回调后 < 前一根（红柱再次变小）
+        else if histogram < 0 and histogram[1] < 0 and histogram < histogram[1]
+            strategy.entry("Long", strategy.long)
+            stopLoss := open - stopLossOffset  // 止损设在开盘价减去止损幅度
+            hadPullback := false  // 重置回调标记
+
+// 零轴附近阈值进场逻辑：DEA 在零轴附近且红柱缩量
+if strategy.position_size == 0
+    // DEA 在零轴附近：math.abs(dea) <= zeroAxisThreshold
+    bool nearZeroAxis = math.abs(dea) <= zeroAxisThreshold
+
+    // 红柱缩量：当前红柱 < 上一根红柱（红柱绝对值变小）
+    bool redShrinking = histogram < 0 and histogram[1] < 0 and histogram > histogram[1]
+
+    // 满足条件且是阳线
+    if nearZeroAxis and redShrinking and close > open
+        strategy.entry("Long", strategy.long)
+        stopLoss := open - stopLossOffset
+
+else if not isUptrend
+    hadPullback := false  // 离开上涨线段时重置
+
+// 持仓后的止损管理
+if strategy.position_size > 0
+    if isUptrend
+        // 检测回调
+        if histogram >= 0 and histogram[1] >= 0 and histogram < histogram[1]
+            hadPullback := true
+        else if histogram < 0 and histogram[1] < 0 and histogram > histogram[1]
+            hadPullback := true
+
+        // 回调后再次跳空：上移止损到跳空K线的open减去止损幅度
+        if hadPullback
+            // 绿柱跳空：回调后 > 前一根
+            if histogram >= 0 and histogram[1] >= 0 and histogram > histogram[1]
+                stopLoss := open - stopLossOffset
+                hadPullback := false  // 重置回调标记，等待下一次回调
+                label.new(bar_index, low, "上移止损\n至:" + str.tostring(stopLoss, "#.##"),
+                         style=label.style_label_up, color=color.blue, textcolor=color.white, size=size.tiny)
+
+            // 红柱跳空：回调后 < 前一根
+            else if histogram < 0 and histogram[1] < 0 and histogram < histogram[1]
+                stopLoss := open - stopLossOffset
+                hadPullback := false  // 重置回调标记，等待下一次回调
+                label.new(bar_index, low, "上移止损\n至:" + str.tostring(stopLoss, "#.##"),
+                         style=label.style_label_up, color=color.blue, textcolor=color.white, size=size.tiny)
+
+    // 执行止损：价格跌破止损线
+    if close < stopLoss
+        strategy.close("Long", comment="止损出场")
+        stopLoss := na
+        hadPullback := false
+
+// 如果离开上涨线段，平仓
+if not isUptrend and strategy.position_size > 0
+    strategy.close("Long", comment="离开上涨线段")
+    stopLoss := na
+    hadPullback := false
+
+// 绘制 EMA 均线
+plot(ema21, "EMA21", color=color.yellow, linewidth=2)
+plot(ema52, "EMA52", color=color.purple, linewidth=2)
+
+// 绘制止损线
+plot(strategy.position_size > 0 and not na(stopLoss) ? stopLoss : na,
+     "止损位", color=color.red, linewidth=2, style=plot.style_linebr)

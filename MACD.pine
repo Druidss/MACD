@@ -169,7 +169,6 @@ var bool first_trade_opened = false
 // 4. 没有持仓
 macd_4h_filter = dif_4h <= max_4h_dif
 in_long_signal_zone = is_uptrend_segment or is_purple_breakout_attempt
-ema21 = ema21
 
 long_entry = ta.crossover(close, ema21) and in_long_signal_zone and macd_4h_filter and not has_any_position
 
