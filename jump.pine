@@ -30,7 +30,7 @@ var float stopLoss = na
 var bool hadPullback = false  // 是否已经发生过回调
 
 // 无仓位时的逻辑：等待跳空进场信号
-if isUptrend and strategy.position_size == 0 and ema21 > ema52
+if isUptrend and strategy.position_size == 0 and ema21 > ema52 and close > ema52 - stopLossOffset
     // 检测绿柱回调：当前柱子 < 上一根柱子
     if histogram >= 0 and histogram[1] >= 0 and histogram < histogram[1]
         hadPullback := true
@@ -39,8 +39,8 @@ if isUptrend and strategy.position_size == 0 and ema21 > ema52
     else if histogram < 0 and histogram[1] < 0 and histogram > histogram[1]
         hadPullback := true
 
-    // 跳空进场：回调后再次上涨突破，且必须是阳线
-    if hadPullback and close > open
+    // 跳空进场：回调后再次上涨突破，且必须是阳线，且DEA必须大于0
+    if hadPullback and close > open and dea > 0
         // 绿柱跳空：回调后 > 前一根
         if histogram >= 0 and histogram[1] >= 0 and histogram > histogram[1]
             strategy.entry("Long", strategy.long)
@@ -54,7 +54,7 @@ if isUptrend and strategy.position_size == 0 and ema21 > ema52
             hadPullback := false  // 重置回调标记
 
 // 零轴附近阈值进场逻辑：DEA 在零轴附近且红柱缩量
-if strategy.position_size == 0 and ema21 > ema52 and dea > 0
+if strategy.position_size == 0 and ema21 > ema52 and dea > 0 and close > ema52 - stopLossOffset
     // DEA 在零轴附近：dea <= zeroAxisThreshold (DEA必须大于0)
     bool nearZeroAxis = dea > 0 and dea <= zeroAxisThreshold
 
