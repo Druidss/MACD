@@ -72,11 +72,11 @@ class BTCDataFetcher:
         self, timeframe: str, limit: int = 100
     ) -> Optional[List[Dict[str, Any]]]:
         """
-        从 OKX API 获取 K 线数据
+        从 OKX API 获取 K 线数据（支持超过300根的分批获取）
 
         参数：
             timeframe: 时间级别（1h, 4h, 1d 等）
-            limit: K 线数量（最大 300）
+            limit: K 线数量（可超过300，会自动分批）
 
         返回：
             K 线数据列表，格式：
@@ -99,6 +99,79 @@ class BTCDataFetcher:
             print(f"[ERROR] Unsupported timeframe: {timeframe}", file=sys.stderr)
             return None
 
+        # 如果需要超过300根，分批获取
+        if limit > 300:
+            return self._fetch_batch(timeframe, bar, limit)
+
+        # 单次获取（≤300根）
+        return self._fetch_single(timeframe, bar, limit)
+
+    def _fetch_batch(
+        self, timeframe: str, bar: str, total_limit: int
+    ) -> Optional[List[Dict[str, Any]]]:
+        """分批获取大量K线（>300根）"""
+        print(f"[INFO] Fetching {total_limit} candles for {timeframe} in batches...", file=sys.stderr)
+
+        all_candles = []
+        before = None
+
+        while len(all_candles) < total_limit:
+            batch_size = min(300, total_limit - len(all_candles))
+            params = {"instId": self.symbol, "bar": bar, "limit": str(batch_size)}
+
+            if before:
+                params["before"] = str(before)
+
+            url = f"{OKX_CANDLES_ENDPOINT}?{parse.urlencode(params)}"
+
+            try:
+                self._rate_limit()
+                req = request.Request(url)
+                req.add_header("User-Agent", "Mozilla/5.0")
+
+                with request.urlopen(req, timeout=10) as response:
+                    data = json.loads(response.read().decode("utf-8"))
+
+                if data.get("code") != "0":
+                    print(f"[ERROR] OKX API error: {data.get('msg')}", file=sys.stderr)
+                    break
+
+                candles_raw = data.get("data", [])
+                if not candles_raw:
+                    break
+
+                for candle in candles_raw:
+                    timestamp_ms = int(candle[0])
+                    all_candles.append({
+                        "timestamp": timestamp_ms / 1000,
+                        "datetime": datetime.fromtimestamp(timestamp_ms / 1000).strftime("%Y-%m-%d %H:%M:%S"),
+                        "open": float(candle[1]),
+                        "high": float(candle[2]),
+                        "low": float(candle[3]),
+                        "close": float(candle[4]),
+                        "volume": float(candle[5]),
+                    })
+
+                # 设置下一批的before参数
+                before = int(candles_raw[-1][0])
+
+                print(f"  Progress: {len(all_candles)}/{total_limit} candles", file=sys.stderr, end="\r")
+
+                if len(candles_raw) < batch_size:
+                    break
+
+            except Exception as e:
+                print(f"\n[ERROR] Batch fetch failed: {e}", file=sys.stderr)
+                break
+
+        all_candles.reverse()
+        print(f"\n[SUCCESS] Fetched {len(all_candles)} candles for {timeframe}", file=sys.stderr)
+        return all_candles
+
+    def _fetch_single(
+        self, timeframe: str, bar: str, limit: int
+    ) -> Optional[List[Dict[str, Any]]]:
+        """单次获取K线（≤300根）"""
         # 限制 limit 最大值
         limit = min(limit, 300)
 
