@@ -41,8 +41,12 @@ TIMEFRAME_MAP = {
 # 默认时间级别
 DEFAULT_TIMEFRAMES = ["2d", "1d", "12h", "6h", "4h", "2h", "1h", "30m"]
 
-# 缓存目录
-CACHE_DIR = "/Users/adrian/Desktop/BA/MACD/data"
+# 缓存目录（相对仓库根目录定位，保证跨环境可移植）
+# 脚本位于 <repo>/.claude/skills/btc-momentum-analyzer/scripts/
+_REPO_ROOT = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
+)
+CACHE_DIR = os.environ.get("MACD_DATA_DIR", os.path.join(_REPO_ROOT, "data"))
 
 
 class BTCDataFetcher:
