@@ -41,8 +41,10 @@ TIMEFRAME_MAP = {
 # 默认时间级别
 DEFAULT_TIMEFRAMES = ["2d", "1d", "12h", "6h", "4h", "2h", "1h", "30m"]
 
-# 缓存目录
-CACHE_DIR = "/Users/adrian/Desktop/BA/MACD/data"
+# 缓存目录（相对于本脚本位置动态解析，兼容本地和容器环境）
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.abspath(os.path.join(_SCRIPT_DIR, "..", "..", "..", ".."))
+CACHE_DIR = os.path.join(_PROJECT_ROOT, "data")
 
 
 class BTCDataFetcher:

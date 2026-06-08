@@ -1,7 +1,7 @@
 ---
 name: btc-momentum-analyzer
 description: 使用自定义动能理论分析 BTC 市场，多时间级别嵌套分析（2日线/1日/12h/6h/4h/2h/1h/30min），识别上涨线段、下跌线段、分立调控、单位调整周期、连续跳空背离、黄白线背离，生成包含详细属性判断的动能报告和交易信号。当用户询问 BTC 动能、线段状态、MACD 分析、周期判断、背离检测时自动激活。
-allowed-tools: Read, Bash, Grep
+allowed-tools: Read, Bash, Grep, WebSearch
 ---
 
 # BTC 动能理论分析器
@@ -54,9 +54,65 @@ allowed-tools: Read, Bash, Grep
 
 **重要**：所有交易参数、阈值、规则均在 THEORY.md 中定义，本 Skill 不包含硬编码的交易逻辑。
 
+## 架构说明：本地 Loop + 容器分析
+
+**数据获取在本地机器运行（OKX API 可访问），分析在容器/Claude 中运行。**
+
+```
+本地机器（Mac）                     容器（Claude Code on the Web）
+─────────────────                   ─────────────────────────────
+local_loop.py                       btc-momentum-analyzer skill
+  ↓ 每 6 小时                         ↓ 读取数据库
+  OKX API 获取 K 线                   data/database/btc_database.json
+  ↓ 计算 MACD/EMA                     ↓ 动能理论分析
+  保存到 btc_database.json            生成多时间级别报告
+  ↓ git commit & push
+  (容器 git pull 拿到最新数据)
+```
+
+### 首次初始化（本地运行一次）
+
+```bash
+cd /path/to/MACD
+# 初始化数据库（下载历史数据）
+python3 .claude/skills/btc-momentum-analyzer/scripts/local_loop.py --init
+
+# 验证数据
+python3 .claude/skills/btc-momentum-analyzer/scripts/database_manager.py --status
+```
+
+### 启动本地 Loop（保持数据最新）
+
+```bash
+# 每 6 小时更新一次，同时 git push（推荐）
+python3 .claude/skills/btc-momentum-analyzer/scripts/local_loop.py --git-push
+
+# 只更新一次（手动触发）
+python3 .claude/skills/btc-momentum-analyzer/scripts/local_loop.py --once --git-push
+
+# 自定义间隔（如每 1 小时）
+python3 .claude/skills/btc-momentum-analyzer/scripts/local_loop.py --interval 60 --git-push
+
+# 更新所有 8 个时间级别
+python3 .claude/skills/btc-momentum-analyzer/scripts/local_loop.py --all-timeframes --git-push
+```
+
+### 使用 launchd / cron 设置定时任务（可选）
+
+```bash
+# 添加 crontab（每 6 小时运行一次）
+crontab -e
+# 添加这行：
+0 */6 * * * cd /path/to/MACD && python3 .claude/skills/btc-momentum-analyzer/scripts/local_loop.py --once --git-push >> /tmp/btc_loop.log 2>&1
+```
+
+---
+
 ## 使用指南
 
 ### 一键分析（推荐）
+
+**前提：本地 loop 已在运行并 push 了最新数据，容器已执行 git pull。**
 
 Claude 会自动执行完整的分析流程，你只需提问：
 
@@ -72,64 +128,38 @@ Skill 会自动：
 3. 进行嵌套动能分析
 4. 生成详细报告
 
-### 手动执行步骤（高级用户）
+### 容器内手动读取数据库
 
-如需手动控制分析流程，可按以下步骤执行：
-
-#### 第一步：获取多时间级别数据
+容器无法访问外部 API，直接读取本地已提交的数据库：
 
 ```bash
-python3 /Users/adrian/Desktop/BA/MACD/.claude/skills/btc-momentum-analyzer/scripts/fetch_btc_data.py \
-  --symbol BTC-USDT \
-  --timeframes 2d,1d,12h,6h,4h,2h,1h,30m \
-  --limit 200 \
-  --exchange okx
+# 查看数据库状态（最新时间戳、各时间级别 K 线数量）
+python3 .claude/skills/btc-momentum-analyzer/scripts/database_manager.py --status
+
+# 读取并打印指定时间级别的最新指标（快速核查）
+python3 - <<'EOF'
+import json
+with open('data/database/btc_database.json') as f:
+    db = json.load(f)
+for tf in ['1d', '12h', '6h', '4h']:
+    c = db['timeframes'][tf]['candles'][-1]
+    print(f"{tf:5s}  close={c['close']:>10.2f}  DIF={c['dif']:>8.1f}  DEA={c['dea']:>8.1f}  Hist={c['histogram']:>8.1f}  [{c['datetime']}]")
+EOF
 ```
 
-参数说明：
-- `--symbol`: 交易对（OKX 格式：BTC-USDT）
-- `--timeframes`: 逗号分隔的时间级别列表
-- `--limit`: 每个时间级别获取的 K 线数量
-- `--exchange`: 交易所（okx, binance, bybit）
-
-输出：JSON 文件，包含所有时间级别的 OHLCV 数据
-
-#### 第二步：计算技术指标
+### 本地手动全流程（在本地机器有网时）
 
 ```bash
-python3 /Users/adrian/Desktop/BA/MACD/.claude/skills/btc-momentum-analyzer/scripts/calculate_indicators.py \
-  /Users/adrian/Desktop/BA/MACD/data/btc_multi_timeframe.json \
-  --ema-periods 26,52 \
-  --macd-params 12,26,9
+# 获取数据
+python3 .claude/skills/btc-momentum-analyzer/scripts/fetch_btc_data.py \
+  --symbol BTC-USDT --timeframes 1d,12h,6h,4h --limit 200 \
+  --output data/btc_latest.json
+
+# 计算指标
+python3 .claude/skills/btc-momentum-analyzer/scripts/calculate_indicators.py \
+  data/btc_latest.json --ema-periods 26,52 --macd-params 12,26,9 \
+  --output data/btc_indicators.json
 ```
-
-输出：带有 EMA 和 MACD 指标的注释数据
-
-#### 第三步：动能理论分析
-
-```bash
-python3 /Users/adrian/Desktop/BA/MACD/.claude/skills/btc-momentum-analyzer/scripts/analyze_momentum.py \
-  /Users/adrian/Desktop/BA/MACD/data/btc_indicators.json \
-  --theory-file /Users/adrian/Desktop/BA/MACD/.claude/skills/btc-momentum-analyzer/THEORY.md
-```
-
-输出：
-- 每个时间级别的线段分类
-- 单位调整周期判断
-- 分立调控检测结果
-- 背离分析（连续跳空背离、黄白线背离）
-- 多时间级别联动关系
-
-#### 第四步：生成交易报告
-
-```bash
-python3 /Users/adrian/Desktop/BA/MACD/.claude/skills/btc-momentum-analyzer/scripts/generate_report.py \
-  /Users/adrian/Desktop/BA/MACD/data/btc_analysis.json \
-  --format text \
-  --detail full
-```
-
-输出：结构化的多时间级别嵌套分析报告
 
 ## 典型输出示例
 
@@ -309,45 +339,24 @@ BTC 动能理论分析报告
 
 ## 数据来源说明
 
-### OKX API
+### 数据流：本地 → 容器
 
-本 Skill 使用 OKX 交易所的免费公开 API：
+| 环境 | 数据获取 | 分析 |
+|------|---------|------|
+| 本地机器（Mac）| `local_loop.py` 调用 OKX API ✅ | 可选 |
+| 容器（Claude Code on Web）| OKX/Binance API **403 被阻断** ❌ | 读 `btc_database.json` ✅ |
 
-**优势**：
-- 免费，无需 API Key（公开数据）
-- 支持所有需要的时间级别（2d, 1d, 12h, 6h, 4h, 2h, 1h, 30m）
-- 数据质量高，延迟低
-- 限制：20 请求/2秒
+**正确工作流**：
+1. 本地运行 `local_loop.py --git-push`（保持数据库最新）
+2. 容器运行 `git pull`（拉取最新数据库）
+3. 容器调用 btc-momentum-analyzer skill 做分析
 
-**API 端点**：
-```
-https://www.okx.com/api/v5/market/candles
-```
+### OKX API（本地使用）
 
-**时间级别映射**：
-- 2d → `2D`
-- 1d → `1D`
-- 12h → `12H`
-- 6h → `6H`
-- 4h → `4H`
-- 2h → `2H`
-- 1h → `1H`
-- 30m → `30m`
-
-### 备用数据源
-
-1. **本地缓存**：
-   - 位置：`/Users/adrian/Desktop/BA/MACD/data/btc_cache_{timeframe}.json`
-   - 缓存有效期：根据时间级别动态调整（30m 缓存 5 分钟，2d 缓存 1 小时）
-
-2. **Binance API**（降级）：
-   - 如果 OKX API 不可用，自动切换
-   - 注意：Binance 的时间级别名称略有不同
-
-3. **手动导出**：
-   - 从 TradingView 或其他平台导出 CSV
-   - 放置在 `data/` 目录
-   - 脚本可自动识别并解析
+- 免费公开 API，无需 Key
+- 端点：`https://www.okx.com/api/v5/market/candles`
+- 限速：20 req/2s
+- 支持所有时间级别：2D, 1D, 12H, 6H, 4H, 2H, 1H, 30m
 
 ## 输出格式
 

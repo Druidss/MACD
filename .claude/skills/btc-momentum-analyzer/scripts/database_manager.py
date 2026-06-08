@@ -33,8 +33,10 @@ sys.path.insert(0, os.path.dirname(__file__))
 from fetch_btc_data import BTCDataFetcher
 from calculate_indicators import IndicatorCalculator
 
-# 数据库配置
-DATABASE_DIR = "/Users/adrian/Desktop/BA/MACD/data/database"
+# 数据库配置（相对于本脚本位置动态解析）
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.abspath(os.path.join(_SCRIPT_DIR, "..", "..", "..", ".."))
+DATABASE_DIR = os.path.join(_PROJECT_ROOT, "data", "database")
 DATABASE_FILE = os.path.join(DATABASE_DIR, "btc_database.json")
 
 # 默认时间级别
