@@ -1,0 +1,9 @@
+# Python 缓存
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
+
+# 定时任务运行时产物（每次运行自动生成）
+data/analysis_reports/cron_6h.log
