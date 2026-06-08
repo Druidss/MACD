@@ -117,14 +117,14 @@ class BTCDataFetcher:
         print(f"[INFO] Fetching {total_limit} candles for {timeframe} in batches...", file=sys.stderr)
 
         all_candles = []
-        before = None
+        after = None  # OKX: after=ts 返回比 ts 更早的 K 线（往历史方向翻页）
 
         while len(all_candles) < total_limit:
             batch_size = min(300, total_limit - len(all_candles))
             params = {"instId": self.symbol, "bar": bar, "limit": str(batch_size)}
 
-            if before:
-                params["before"] = str(before)
+            if after:
+                params["after"] = str(after)
 
             url = f"{OKX_CANDLES_ENDPOINT}?{parse.urlencode(params)}"
 
@@ -156,8 +156,8 @@ class BTCDataFetcher:
                         "volume": float(candle[5]),
                     })
 
-                # 设置下一批的before参数
-                before = int(candles_raw[-1][0])
+                # OKX 返回降序（最新在前），取最后一条（最早）的时间戳，用 after 继续往历史翻
+                after = int(candles_raw[-1][0])
 
                 print(f"  Progress: {len(all_candles)}/{total_limit} candles", file=sys.stderr, end="\r")
 

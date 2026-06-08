@@ -18,7 +18,7 @@
 
 为保证 MACD 与 K 线数据精确：
   - dif / dea / histogram 直接采用数据库中由 IndicatorCalculator 计算的精确值
-  - EMA21 / EMA52 由脚本用同一套 EMA 公式从收盘价重新计算（jump.pine 使用 EMA21/52）
+  - EMA26 / EMA52 由脚本用同一套 EMA 公式从收盘价重新计算（与数据库存储一致）
 
 用法：
   python3 analyze_volume_jump.py                       # 默认数据库 6h
@@ -107,7 +107,7 @@ def annotate_volume(candles: List[Dict[str, Any]], vol_period: int,
             c["vol_state"] = "常量"
 
 
-def simulate_jump_strategy(candles: List[Dict[str, Any]], ema21: List[Optional[float]],
+def simulate_jump_strategy(candles: List[Dict[str, Any]], ema26: List[Optional[float]],
                            ema52: List[Optional[float]], stop_loss_offset: float,
                            zero_axis_threshold: float) -> Dict[str, Any]:
     """
@@ -125,12 +125,12 @@ def simulate_jump_strategy(candles: List[Dict[str, Any]], ema21: List[Optional[f
         c = candles[i]
         hist = c.get("histogram")
         dea = c.get("dea")
-        e21 = ema21[i]
+        e26 = ema26[i]
         e52 = ema52[i]
         is_last = (i == n - 1)
 
         # 指标未就绪
-        if hist is None or dea is None or e21 is None or e52 is None or i == 0:
+        if hist is None or dea is None or e26 is None or e52 is None or i == 0:
             continue
         prev = candles[i - 1]
         hist1 = prev.get("histogram")
@@ -142,7 +142,7 @@ def simulate_jump_strategy(candles: List[Dict[str, Any]], ema21: List[Optional[f
         entry_reason = None
 
         # ---------- 空仓：等待跳空进场 ----------
-        if position == 0 and is_uptrend and e21 > e52 and c["close"] > e52 - stop_loss_offset:
+        if position == 0 and is_uptrend and e26 > e52 and c["close"] > e52 - stop_loss_offset:
             # 绿柱回调
             if hist >= 0 and hist1 >= 0 and hist < hist1:
                 had_pullback = True
@@ -166,7 +166,7 @@ def simulate_jump_strategy(candles: List[Dict[str, Any]], ema21: List[Optional[f
                     entry_reason = "红柱回调后再次缩小（零轴下方跳空）"
 
         # ---------- 零轴附近缩量进场 ----------
-        if position == 0 and e21 > e52 and dea > 0 and c["close"] > e52 - stop_loss_offset:
+        if position == 0 and e26 > e52 and dea > 0 and c["close"] > e52 - stop_loss_offset:
             near_zero = 0 < dea <= zero_axis_threshold
             red_shrinking = hist < 0 and hist1 < 0 and hist > hist1
             if near_zero and red_shrinking and c["close"] > c["open"]:
@@ -236,7 +236,7 @@ def simulate_jump_strategy(candles: List[Dict[str, Any]], ema21: List[Optional[f
     }
 
 
-def build_report(candles, ema21, ema52, sim, timeframe, params, recent=8) -> Dict[str, Any]:
+def build_report(candles, ema26, ema52, sim, timeframe, params, recent=8) -> Dict[str, Any]:
     last = candles[-1]
     i = len(candles) - 1
     return {
@@ -254,13 +254,13 @@ def build_report(candles, ema21, ema52, sim, timeframe, params, recent=8) -> Dic
             "vol_ma": last.get("vol_ma"),
             "vol_ratio": last.get("vol_ratio"),
             "vol_state": last.get("vol_state"),
-            "ema21": ema21[i],
+            "ema26": ema26[i],
             "ema52": ema52[i],
             "dif": last.get("dif"),
             "dea": last.get("dea"),
             "histogram": last.get("histogram"),
             "is_uptrend": (last.get("dea") or 0) > 0,
-            "ema21_above_ema52": (ema21[i] is not None and ema52[i] is not None and ema21[i] > ema52[i]),
+            "ema26_above_ema52": (ema26[i] is not None and ema52[i] is not None and ema26[i] > ema52[i]),
         },
         "strategy_state": {
             "position": "持多" if sim["position"] == 1 else "空仓",
@@ -279,7 +279,7 @@ def build_report(candles, ema21, ema52, sim, timeframe, params, recent=8) -> Dic
                 "dif": round(c["dif"], 1) if c.get("dif") is not None else None,
                 "dea": round(c["dea"], 1) if c.get("dea") is not None else None,
                 "histogram": round(c["histogram"], 1) if c.get("histogram") is not None else None,
-                "ema21": round(ema21[len(candles) - recent + j], 1) if ema21[len(candles) - recent + j] is not None else None,
+                "ema26": round(ema26[len(candles) - recent + j], 1) if ema26[len(candles) - recent + j] is not None else None,
                 "ema52": round(ema52[len(candles) - recent + j], 1) if ema52[len(candles) - recent + j] is not None else None,
             }
             for j, c in enumerate(candles[-recent:])
@@ -298,8 +298,8 @@ def format_text(rep: Dict[str, Any]) -> str:
     L.append("")
     L.append("【当前 K 线 / MACD（精确值）】")
     L.append(f"  收盘 {cur['close']}  开盘 {cur['open']}  高 {cur['high']}  低 {cur['low']}  ({cur['candle_color']})")
-    L.append(f"  EMA21 {cur['ema21']:.1f}   EMA52 {cur['ema52']:.1f}   "
-             f"({'EMA21>EMA52 多头排列' if cur['ema21_above_ema52'] else 'EMA21<EMA52 空头/纠缠'})")
+    L.append(f"  EMA26 {cur['ema26']:.1f}   EMA52 {cur['ema52']:.1f}   "
+             f"({'EMA26>EMA52 多头排列' if cur['ema26_above_ema52'] else 'EMA26<EMA52 空头/纠缠'})")
     L.append(f"  DIF {cur['dif']:.2f}   DEA {cur['dea']:.2f}   Histogram {cur['histogram']:.2f}   "
              f"({'上涨线段 DEA>0' if cur['is_uptrend'] else '非上涨线段 DEA<=0'})")
     L.append("")
@@ -352,11 +352,11 @@ def main():
 
     candles = load_candles(args.input, args.timeframe)
     closes = [c["close"] for c in candles]
-    ema21 = calc_ema(closes, 21)
+    ema26 = calc_ema(closes, 26)
     ema52 = calc_ema(closes, 52)
 
     annotate_volume(candles, args.vol_period, args.expand_threshold, args.shrink_threshold)
-    sim = simulate_jump_strategy(candles, ema21, ema52,
+    sim = simulate_jump_strategy(candles, ema26, ema52,
                                  args.stop_loss_offset, args.zero_axis_threshold)
 
     params = {
@@ -366,7 +366,7 @@ def main():
         "expand_threshold": args.expand_threshold,
         "shrink_threshold": args.shrink_threshold,
     }
-    rep = build_report(candles, ema21, ema52, sim, args.timeframe, params, args.recent)
+    rep = build_report(candles, ema26, ema52, sim, args.timeframe, params, args.recent)
 
     out = json.dumps(rep, ensure_ascii=False, indent=2) if args.format == "json" else format_text(rep)
     if args.output:

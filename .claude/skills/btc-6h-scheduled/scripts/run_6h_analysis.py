@@ -114,8 +114,8 @@ def build_markdown(db_dict, timeframes, vj_report, signals, update_status) -> st
     L.append("## 三、缩量放量 / 能量柱跳空（6h, jump.pine 逻辑）")
     L.append("")
     L.append(f"- K 线: 收 {cur['close']} 开 {cur['open']} 高 {cur['high']} 低 {cur['low']} ({cur['candle_color']})")
-    L.append(f"- EMA21 {cur['ema21']:.1f} / EMA52 {cur['ema52']:.1f} "
-             f"({'多头排列' if cur['ema21_above_ema52'] else '空头/纠缠'})")
+    L.append(f"- EMA26 {cur['ema26']:.1f} / EMA52 {cur['ema52']:.1f} "
+             f"({'多头排列' if cur['ema26_above_ema52'] else '空头/纠缠'})")
     L.append(f"- DIF {cur['dif']:.2f} / DEA {cur['dea']:.2f} / Hist {cur['histogram']:.2f} "
              f"({'上涨线段' if cur['is_uptrend'] else '非上涨线段'})")
     L.append(f"- 成交量 {cur['volume']:.2f} / 均量 {cur['vol_ma']:.2f} / 量比 {cur['vol_ratio']:.2f} "
@@ -181,12 +181,12 @@ def main():
     # 缩量放量 / 跳空（6h）
     candles_6h = db_dict["timeframes"]["6h"]["candles"]
     closes = [c["close"] for c in candles_6h]
-    ema21 = vj.calc_ema(closes, 21)
+    ema26 = vj.calc_ema(closes, 26)
     ema52 = vj.calc_ema(closes, 52)
     vj.annotate_volume(candles_6h, 20, 1.5, 0.7)
-    sim = vj.simulate_jump_strategy(candles_6h, ema21, ema52,
+    sim = vj.simulate_jump_strategy(candles_6h, ema26, ema52,
                                     args.stop_loss_offset, args.zero_axis_threshold)
-    vj_report = vj.build_report(candles_6h, ema21, ema52, sim, "6h", {
+    vj_report = vj.build_report(candles_6h, ema26, ema52, sim, "6h", {
         "stop_loss_offset": args.stop_loss_offset,
         "zero_axis_threshold": args.zero_axis_threshold,
     }, recent=8)

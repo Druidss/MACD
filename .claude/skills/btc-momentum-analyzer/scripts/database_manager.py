@@ -48,14 +48,14 @@ ALL_TIMEFRAMES = ["2d", "1d", "12h", "6h", "4h", "2h", "1h", "30m"]
 # 每个时间级别的初始数据量（足够计算稳定的指标）
 # 注意：OKX API每次最多返回300根，需要分批获取更多数据
 INITIAL_LIMITS = {
-    "2d": 600,    # 约 1200 天 (需要分批)
-    "1d": 600,    # 约 600 天 (需要分批)
-    "12h": 600,   # 约 300 天 (需要分批)
-    "6h": 600,    # 约 150 天 (需要分批)
-    "4h": 600,    # 约 100 天 (需要分批)
-    "2h": 600,    # 约 50 天 (需要分批)
-    "1h": 600,    # 约 25 天 (需要分批)
-    "30m": 600,   # 约 12 天 (需要分批)
+    "2d": 1000,   # 约 2000 天
+    "1d": 1000,   # 约 1000 天
+    "12h": 1200,  # 约 600 天
+    "6h": 1440,   # 约 360 天（EMA52 需足够历史数据收敛）
+    "4h": 1440,   # 约 240 天
+    "2h": 1200,   # 约 100 天
+    "1h": 1200,   # 约 50 天
+    "30m": 1200,  # 约 25 天
 }
 
 
@@ -102,7 +102,9 @@ class BTCDatabase:
         print("[INFO] Initializing database...", file=sys.stderr)
         print(f"[INFO] Timeframes: {', '.join(timeframes)}", file=sys.stderr)
 
-        database = {
+        # 加载现有数据库（合并模式，不覆盖未指定的时间级别）
+        existing = self.load_database()
+        database = existing if existing else {
             "version": "1.0.0",
             "created_at": datetime.now().isoformat(),
             "last_updated": datetime.now().isoformat(),
