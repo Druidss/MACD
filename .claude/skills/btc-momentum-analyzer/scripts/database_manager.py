@@ -33,10 +33,13 @@ sys.path.insert(0, os.path.dirname(__file__))
 from fetch_btc_data import BTCDataFetcher
 from calculate_indicators import IndicatorCalculator
 
-# 数据库配置（相对于本脚本位置动态解析）
-_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_PROJECT_ROOT = os.path.abspath(os.path.join(_SCRIPT_DIR, "..", "..", "..", ".."))
-DATABASE_DIR = os.path.join(_PROJECT_ROOT, "data", "database")
+# 数据库配置（相对仓库根目录定位，保证跨环境可移植）
+# 脚本位于 <repo>/.claude/skills/btc-momentum-analyzer/scripts/
+_REPO_ROOT = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
+)
+_DATA_DIR = os.environ.get("MACD_DATA_DIR", os.path.join(_REPO_ROOT, "data"))
+DATABASE_DIR = os.path.join(_DATA_DIR, "database")
 DATABASE_FILE = os.path.join(DATABASE_DIR, "btc_database.json")
 
 # 默认时间级别
