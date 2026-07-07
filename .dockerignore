@@ -1,0 +1,8 @@
+.git
+.DS_Store
+**/__pycache__/
+**/*.pyc
+data/database/
+data/analysis_reports/
+data/*.html
+data/historical_*.json

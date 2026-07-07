@@ -1,0 +1,12 @@
+[Unit]
+Description=Run MACD Binance BTC momentum report every 6 hours after candle close
+
+[Timer]
+# Binance 6h UTC candles close at 00:00/06:00/12:00/18:00 UTC.
+# Run a few minutes later so the just-closed candle is confirmed.
+OnCalendar=*-*-* 00/6:03:00 UTC
+Persistent=true
+Unit=macd-binance-6h-report.service
+
+[Install]
+WantedBy=timers.target

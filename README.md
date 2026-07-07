@@ -125,3 +125,43 @@ ema21 52 趋势排列后, 第一次回踩
 
 ![Screenshot 2025-10-16 at 21.36.45](attach/README/Screenshot 2025-10-16 at 21.36.45.png)
 
+
+## 2026-07-07 Binance 直取直算 6h 动能报告链路
+
+新增自动化主入口：`scripts/binance_momentum_report.py`
+
+目标：不再依赖手动维护 `data/database/btc_database.json`，每次运行直接从 Binance 拉取已收盘 K 线，在内存中计算 EMA26/EMA52 与 MACD(12,26,9)，生成可核对的多时间级别动能报告。
+
+默认口径：
+
+```bash
+python3 scripts/binance_momentum_report.py \
+  --market futures \
+  --symbol BTCUSDT \
+  --timeframes 1d,12h,6h,4h,2h,1h,30m
+```
+
+报告输出：
+
+- `data/analysis_reports/<YYYY-MM-DD_HHMM>_binance_6h_momentum.md`
+- 每个时间级别包含最新已收盘 K 线时间、Close、EMA26、EMA52、DIF、DEA、Hist
+- 6h 主级别额外判断：归零轴状态、Unit1/Unit2、是否正在形成 U2、与上下级别的共振/矛盾
+- 最近 8 根 6h K 线明细用于核对指标
+
+兼容入口：
+
+```bash
+python3 .claude/skills/btc-6h-scheduled/scripts/run_6h_analysis.py
+```
+
+线上部署建议：用 Docker + systemd timer 每 6 小时 K 线收盘后运行一次，配置文件见：
+
+- `Dockerfile`
+- `docker-compose.yml`
+- `deploy/systemd/macd-binance-6h-report.service`
+- `deploy/systemd/macd-binance-6h-report.timer`
+
+也可以直接使用 GitHub Actions 托管定时任务：
+
+- `.github/workflows/btc-6h-binance-report.yml`
+- 说明文档：`docs/cloud-6h-report.md`

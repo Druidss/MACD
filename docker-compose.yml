@@ -1,0 +1,16 @@
+services:
+  analyzer:
+    build: .
+    image: macd-binance-analyzer:local
+    working_dir: /app
+    volumes:
+      - ./data/analysis_reports:/app/data/analysis_reports
+    command:
+      - python
+      - scripts/binance_momentum_report.py
+      - --market
+      - futures
+      - --symbol
+      - BTCUSDT
+      - --timeframes
+      - 1d,12h,6h,4h,2h,1h,30m

@@ -2,7 +2,7 @@
 #
 # BTC 6 小时定时分析 —— cron 包装脚本
 #
-# 每 6 小时运行一次，更新数据库并生成 6h 综合分析报告。
+# 每 6 小时运行一次，直接从 Binance 拉取已收盘 K 线并生成 6h 综合动能报告。
 # 报告写入 data/analysis_reports/<时间戳>_6h_combined.md
 # 运行日志写入 data/analysis_reports/cron_6h.log
 #
@@ -29,6 +29,6 @@ mkdir -p "${LOG_DIR}"
   echo "=================================================="
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] 开始 BTC 6h 定时分析"
   cd "${REPO_ROOT}"
-  "${PYTHON}" "${SCRIPT_DIR}/run_6h_analysis.py" --timeframes 1d,12h,6h,4h
+  "${PYTHON}" "${SCRIPT_DIR}/run_6h_analysis.py" --market futures --symbol BTCUSDT --timeframes 1d,12h,6h,4h,2h,1h,30m
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] 完成"
 } >> "${LOG_FILE}" 2>&1

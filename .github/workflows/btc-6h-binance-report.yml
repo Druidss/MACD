@@ -1,0 +1,78 @@
+name: BTC 6h Binance Momentum Report
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Binance 6h UTC candles close at 00:00/06:00/12:00/18:00.
+    # Run 3 minutes later so the just-closed candle is confirmed.
+    - cron: "3 0,6,12,18 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate report
+        id: report
+        shell: bash
+        run: |
+          mkdir -p data/analysis_reports
+          report_path="$(
+            python3 scripts/binance_momentum_report.py \
+              --market futures \
+              --symbol BTCUSDT \
+              --timeframes 1d,12h,6h,4h,2h,1h,30m \
+              --limit 720 \
+              --json-output data/analysis_reports/latest_binance_6h_momentum.json
+          )"
+          cp "$report_path" data/analysis_reports/latest_binance_6h_momentum.md
+          echo "report_path=$report_path" >> "$GITHUB_OUTPUT"
+          echo "json_path=data/analysis_reports/latest_binance_6h_momentum.json" >> "$GITHUB_OUTPUT"
+          echo "latest_path=data/analysis_reports/latest_binance_6h_momentum.md" >> "$GITHUB_OUTPUT"
+
+      - name: Add report to job summary
+        shell: bash
+        run: |
+          {
+            echo "## BTC 6h Binance Momentum Report"
+            echo
+            echo "- Report: \`${{ steps.report.outputs.report_path }}\`"
+            echo "- Generated at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            echo
+            sed -n '1,80p' "${{ steps.report.outputs.latest_path }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-6h-binance-momentum-report
+          path: |
+            ${{ steps.report.outputs.report_path }}
+            ${{ steps.report.outputs.latest_path }}
+            ${{ steps.report.outputs.json_path }}
+          retention-days: 30
+
+      - name: Optional Telegram notification
+        if: ${{ env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != '' }}
+        shell: bash
+        run: |
+          summary="$(sed -n '1,45p' "${{ steps.report.outputs.latest_path }}")"
+          curl --fail --silent --show-error \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${summary}" \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"

@@ -1,0 +1,9 @@
+[Unit]
+Description=MACD Binance BTC 6h momentum report
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/macd
+ExecStart=/usr/bin/docker compose run --rm analyzer

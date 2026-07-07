@@ -8,15 +8,16 @@ allowed-tools: Read, Bash, Grep
 
 ## 功能概述
 
-把两套分析按 **6 小时为周期** 自动跑在 BTC 6h K 线上：
+把分析按 **6 小时为周期** 自动跑在 BTC 6h K 线上。当前主链路已简化为：
 
-1. **动能理论**（`btc-momentum-analyzer` / `THEORY.md`）：多时间级别线段、单位调整
-   周期、背离、机械买卖点。
-2. **缩量放量 / 能量柱跳空**（`btc-volume-jump-analyzer` / `jump.pine`）：6h 量价缩放
-   与回调→跳空进场信号。
+```
+Binance 已收盘K线 → 内存计算 EMA26/EMA52 + MACD → THEORY.md 动能报告 → Markdown/JSON
+```
 
-并 **保证 MACD 与 K 线数据精确**：DIF/DEA/Histogram 用 `IndicatorCalculator`
-精确计算，EMA21/52 用一致的 EMA 公式从收盘价重算，OHLCV 原样使用。
+不再要求先维护 `data/database/btc_database.json`；旧数据库链路仅保留给历史报告兼容。
+
+并 **保证 MACD 与 K 线数据精确**：DIF/DEA/Histogram 与 EMA26/52 从 Binance
+已收盘 OHLCV 直接重算，报告中保留每个时间级别的 K 线时间、EMA26/EMA52、DIF/DEA/Hist 供核对。
 
 每次运行输出一份带时间戳的综合报告：
 `data/analysis_reports/<YYYY-MM-DD_HHMM>_6h_combined.md`
@@ -24,18 +25,18 @@ allowed-tools: Read, Bash, Grep
 ## 编排脚本
 
 ```bash
-# 更新数据库（网络可用时拉最新行情）并生成报告
+# Binance 直取直算并生成报告（默认 futures BTCUSDT）
 python3 .claude/skills/btc-6h-scheduled/scripts/run_6h_analysis.py
 
-# 跳过更新，直接用现有数据库（网络受限环境）
-python3 .claude/skills/btc-6h-scheduled/scripts/run_6h_analysis.py --no-update
+# 自定义参与级别（默认 1d,12h,6h,4h,2h,1h,30m；6h 为主）
+python3 .claude/skills/btc-6h-scheduled/scripts/run_6h_analysis.py --timeframes 1d,12h,6h,4h,2h,1h,30m
 
-# 自定义参与级别（默认 1d,12h,6h,4h；6h 为主）
-python3 .claude/skills/btc-6h-scheduled/scripts/run_6h_analysis.py --timeframes 1d,12h,6h,4h
+# 直接调用底层脚本
+python3 scripts/binance_momentum_report.py --market futures --symbol BTCUSDT --stdout
 ```
 
-流程：① 增量更新数据库（失败自动回退）→ ② 读取精确指标 → ③ 动能机械买卖点
-→ ④ 缩量放量/跳空 → ⑤ 写综合 Markdown 报告。
+流程：① 获取 Binance 已收盘 K 线 → ② 内存计算 EMA/MACD → ③ 判断 DEA 线段、归零轴、
+Unit1/Unit2、6h 与上下级别关系 → ④ 写综合 Markdown 报告。
 
 ## 如何“每 6 小时”定时运行
 
@@ -47,11 +48,11 @@ python3 .claude/skills/btc-6h-scheduled/scripts/run_6h_analysis.py --timeframes 
 
 ```bash
 crontab -e
-# 每 6 小时整点运行（0/6/12/18 时）：
+# 每 6 小时整点后运行（0/6/12/18 UTC K线收盘后）：
 0 */6 * * * /绝对路径/到/仓库/.claude/skills/btc-6h-scheduled/scripts/cron_6h.sh
 ```
 
-- 包装脚本 `cron_6h.sh` 会自动定位仓库根目录、更新数据库、生成报告。
+- 包装脚本 `cron_6h.sh` 会自动定位仓库根目录、从 Binance 拉数据、生成报告。
 - 运行日志：`data/analysis_reports/cron_6h.log`
 - 手动测试：`bash .claude/skills/btc-6h-scheduled/scripts/cron_6h.sh`
 
@@ -73,17 +74,16 @@ Claude 会每 6 小时：运行编排脚本 → 读取报告 → 套用 `THEORY.
 
 ## 报告结构
 
-1. **多时间级别线段速览**：1d/12h/6h/4h 的精确 DIF/DEA/Hist 与线段方向
-2. **动能理论机械买卖点**：按 `THEORY.md` 规则的买/卖/观望信号
-3. **缩量放量 / 能量柱跳空（6h）**：量价状态、跳空持仓与本根 K 线信号、最近明细
-4. **需结合动能理论研判**：留给 Claude 用 `THEORY.md` 深入判断的清单
+1. **多时间级别数值核对**：1d/12h/6h/4h/2h/1h/30m 的 EMA26/EMA52、DIF/DEA/Hist
+2. **6h 主级别判断**：归零轴、Unit1/Unit2、是否正在形成 U2
+3. **6h 与上下级别关系**：上级约束、下级确认/矛盾
+4. **当前可执行结论**：等待、顺势多单条件、失效风险线
 
 ## 数据与网络
 
-- 实时数据来自 OKX/Binance 公开 API（`database_manager.py --update`）。
-- 若运行环境网络策略屏蔽交易所 API，更新会自动回退到数据库现有数据，报告照常生成
-  （对应数据库最后一根 K 线时间）。
-- 数据库路径：`data/database/btc_database.json`（可用环境变量 `MACD_DATA_DIR` 覆盖）。
+- 实时数据来自 Binance 公开 Kline API；默认 `futures BTCUSDT`，也可用 `--market spot`。
+- 若运行环境网络策略屏蔽交易所 API，优先使用 Codex 的 `$binance` 连接器做即时核对；线上部署建议用 VPS/Docker/systemd timer。
+- 旧数据库路径：`data/database/btc_database.json`（仅历史兼容）。
 
 ## 相关 Skill
 
