@@ -1,0 +1,46 @@
+//@version=5
+indicator("TD Sequential Lite - Same Logic For 9 And 13", overlay=true, max_labels_count=500)
+
+//==================== 参数 ====================//
+showSetup9      = input.bool(true, "显示 9")
+showCountdown13 = input.bool(true, "显示 13")
+showBuy         = input.bool(true, "显示买入信号")
+showSell        = input.bool(true, "显示卖出信号")
+buyColor        = input.color(color.new(color.green, 0), "买入颜色")
+sellColor       = input.color(color.new(color.red, 0), "卖出颜色")
+
+//==================== 计数条件 ====================//
+// 买入：close < close[4]
+// 卖出：close > close[4]
+buyCond  = close < close[4]
+sellCond = close > close[4]
+
+//==================== 连续计数 ====================//
+var int buyCount  = 0
+var int sellCount = 0
+
+buyCount  := buyCond  ? nz(buyCount[1]) + 1 : 0
+sellCount := sellCond ? nz(sellCount[1]) + 1 : 0
+
+//==================== 信号定义 ====================//
+// 同一套逻辑：
+// 累计到9时显示9
+// 累计到13时显示13
+buy9Signal   = buyCount == 9
+sell9Signal  = sellCount == 9
+
+buy13Signal  = buyCount == 13
+sell13Signal = sellCount == 13
+
+//==================== 绘制信号 ====================//
+plotshape(showSetup9 and showBuy and buy9Signal, title="Buy 9", text="9", style=shape.labelup, location=location.belowbar, color=buyColor, textcolor=color.white, size=size.small)
+plotshape(showSetup9 and showSell and sell9Signal, title="Sell 9", text="9", style=shape.labeldown, location=location.abovebar, color=sellColor, textcolor=color.white, size=size.small)
+
+plotshape(showCountdown13 and showBuy and buy13Signal, title="Buy 13", text="13", style=shape.labelup, location=location.belowbar, color=buyColor, textcolor=color.white, size=size.small)
+plotshape(showCountdown13 and showSell and sell13Signal, title="Sell 13", text="13", style=shape.labeldown, location=location.abovebar, color=sellColor, textcolor=color.white, size=size.small)
+
+//==================== 提醒条件 ====================//
+alertcondition(buy9Signal, title="TD Buy 9", message="TD Buy 9 出现")
+alertcondition(sell9Signal, title="TD Sell 9", message="TD Sell 9 出现")
+alertcondition(buy13Signal, title="TD Buy 13", message="TD Buy 13 出现")
+alertcondition(sell13Signal, title="TD Sell 13", message="TD Sell 13 出现")

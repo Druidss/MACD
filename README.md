@@ -2,6 +2,35 @@
 EMA 21 均线系统
 只做btc, 主要应用于 btc 1小时 和 4小时级别
 
+## 九转信号本地运行
+
+`nine.py` 是 `nine.pine` 的无第三方依赖 Python 版本，严格使用相同逻辑：
+
+- 买入计数：`close < close[4]` 连续成立
+- 卖出计数：`close > close[4]` 连续成立
+- 连续计数到 9 和 13 时分别产生信号；条件不成立立即归零
+
+直接读取 Binance BTCUSDT 6 小时已收盘 K 线：
+
+```bash
+python nine.py --symbol BTCUSDT --interval 6h --limit 500
+```
+
+读取项目中的本地 K 线：
+
+```bash
+python nine.py --input data/historical_4h_1000.json
+python nine.py --input data/database/btc_database.json --timeframe 6h
+```
+
+将全部计数与信号写入 JSON，供服务器、网页或 Discord 推送使用：
+
+```bash
+python nine.py --symbol BTCUSDT --interval 6h --output data/nine_signals.json
+```
+
+默认排除 Binance 尚未收盘的 K 线，避免盘中信号反复变化。调试实时 K 线时可显式添加 `--include-open-candle`。
+
 btc 1小时参数调节: 
 1.  4小时MACD 阈值 1000
 2.  下跌线段DEA 确认k线数 8根 (8根后正式为从上涨线段变成下跌线段)
