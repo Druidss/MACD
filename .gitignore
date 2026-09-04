@@ -1,4 +1,16 @@
-# 这个仓库只版本控制根目录的 Pine Script 源文件。
+# 保留 Pine Script 与 Vercel/Nuxt 源码。
 /*
 !/.gitignore
 !/*.pine
+!/README.md
+!/web/
+!/web/**
+
+# 本地依赖、构建产物与缓存不纳入版本控制。
+/web/node_modules/
+/web/.nuxt/
+/web/.output/
+/web/.data/
+/web/.data-from-local-preview/
+/web/.env
+/web/coverage/
