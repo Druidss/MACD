@@ -1,0 +1,109 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+@import "@fontsource-variable/manrope";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+:root {
+  --momentum-background-base: #000000;
+  --momentum-surface-strong: #111214;
+  --momentum-surface-subtle: #202124;
+  --momentum-surface-card: #0c0c0e;
+  --momentum-border-subtle: #28292e;
+  --momentum-brand-lime: #bdfe30;
+  --momentum-brand-pink: #fc46ab;
+  --momentum-brand-blue: #8ab8cb;
+  --momentum-text-primary: #ffffff;
+  --momentum-text-secondary: #94969e;
+  --momentum-text-muted: #696c74;
+  --ui-primary: var(--momentum-brand-lime);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--momentum-background-base);
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--momentum-background-base);
+  color: var(--momentum-text-primary);
+  font-family: "Manrope Variable", Manrope, ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.mono {
+  font-family: "IBM Plex Mono Variable", "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.dashboard-shell {
+  width: min(100%, 1440px);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.surface {
+  border: 1px solid rgba(255, 255, 255, 0.025);
+  background: var(--momentum-surface-strong);
+}
+
+.panel-kicker {
+  margin: 0;
+  color: var(--momentum-brand-lime);
+  font-family: "IBM Plex Mono Variable", "IBM Plex Mono", monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.panel-title {
+  margin: 7px 0 0;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 900px) {
+  .dashboard-shell {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 560px) {
+  .dashboard-shell {
+    padding: 12px;
+  }
+}
