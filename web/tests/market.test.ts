@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calculateIndicators, type BinanceKline } from '../server/utils/market'
+import { calculateIndicators, mergeKlines, type BinanceKline } from '../server/utils/market'
 import { normalizeSignal, secretsMatch, tradingViewPayloadSchema } from '../server/utils/signals'
 import { getMacdHistogramColor, getMacdHistogramState, macdColors } from '../shared/utils/macd-style'
 
@@ -32,6 +32,35 @@ describe('market indicators', () => {
     expect(points.at(-1)?.dif).toBeGreaterThan(0)
     expect(Number.isFinite(points.at(-1)?.histogram)).toBe(true)
     expect(points.at(-1)?.time).toBeTypeOf('number')
+  })
+})
+
+describe('local kline cache merging', () => {
+  it('replaces an existing candle with the latest Binance version', () => {
+    const cached = makeRows(3)
+    const updatedLast = [...cached[2]] as BinanceKline
+    updatedLast[4] = '70000'
+
+    const merged = mergeKlines(cached, [updatedLast], 10)
+
+    expect(merged).toHaveLength(3)
+    expect(merged.at(-1)?.[4]).toBe('70000')
+  })
+
+  it('keeps chronological data up to the configured cache limit', () => {
+    const cached = makeRows(80)
+    const remote = makeRows(80).map((row) => {
+      const copy = [...row] as BinanceKline
+      copy[0] += 80 * 3_600_000
+      copy[6] += 80 * 3_600_000
+      return copy
+    })
+
+    const merged = mergeKlines(cached, remote, 100)
+
+    expect(merged).toHaveLength(100)
+    expect(merged[0]![0]).toBe(cached[60]![0])
+    expect(merged.at(-1)?.[0]).toBe(remote.at(-1)?.[0])
   })
 })
 

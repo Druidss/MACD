@@ -1,6 +1,7 @@
 export const dashboardIntervals = ['1h', '6h', '1d'] as const
 
 export type DashboardInterval = typeof dashboardIntervals[number]
+export type MarketDataSource = 'binance-futures' | 'local-cache'
 
 export interface CandlePoint {
   time: number
@@ -43,6 +44,8 @@ export interface EmaStatus {
 export interface MarketFrame {
   timeframe: DashboardInterval
   points: CandlePoint[]
+  dataSource: MarketDataSource
+  availablePoints: number
   lastPrice: number
   priceChangePct: number
   macd: MacdStatus
@@ -64,7 +67,7 @@ export interface TradingSignal {
 
 export interface DashboardPayload {
   generatedAt: string
-  source: 'binance-futures'
+  source: MarketDataSource | 'mixed'
   symbol: string
   selectedInterval: DashboardInterval
   frames: Record<DashboardInterval, MarketFrame>

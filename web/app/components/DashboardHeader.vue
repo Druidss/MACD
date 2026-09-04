@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import type { DashboardPayload } from '#shared/types/dashboard'
+
 const props = defineProps<{
   pending: boolean
   updatedAt?: string
+  source?: DashboardPayload['source']
   activeView: 'overview' | 'positions' | 'signals'
 }>()
 
@@ -24,6 +27,12 @@ const updatedLabel = computed(() => {
     minute: '2-digit',
     second: '2-digit'
   }).format(new Date(props.updatedAt))
+})
+
+const sourceLabel = computed(() => {
+  if (props.source === 'local-cache') return 'LOCAL CACHE'
+  if (props.source === 'mixed') return 'BINANCE + CACHE'
+  return 'BINANCE'
 })
 </script>
 
@@ -50,8 +59,8 @@ const updatedLabel = computed(() => {
 
     <div class="market-connection">
       <div class="market-pill">
-        <span class="live-dot" />
-        <span>BINANCE · BTCUSDT</span>
+        <span class="live-dot" :class="{ 'live-dot--cache': source === 'local-cache' }" />
+        <span>{{ sourceLabel }} · BTCUSDT</span>
         <span class="connection-time mono">{{ updatedLabel }}</span>
       </div>
       <UButton
@@ -157,6 +166,11 @@ const updatedLabel = computed(() => {
   border-radius: 50%;
   background: var(--momentum-brand-lime);
   box-shadow: 0 0 12px rgba(189, 254, 48, 0.58);
+}
+
+.live-dot--cache {
+  background: #ffb340;
+  box-shadow: 0 0 12px rgba(255, 179, 64, 0.5);
 }
 
 .connection-time {

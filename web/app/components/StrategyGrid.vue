@@ -25,6 +25,7 @@ const percent = (value: number) => `${signed(value, 2)}%`
         <div class="macd-timeframe__header mono">
           <strong>{{ timeframe.toUpperCase() }}</strong>
           <span>
+            <em>{{ frames[timeframe].points.length }} B · DRAG</em>
             <i>DIF {{ signed(frames[timeframe].macd.dif) }}</i>
             <b>DEA {{ signed(frames[timeframe].macd.dea) }}</b>
           </span>
@@ -157,11 +158,13 @@ const percent = (value: number) => `${signed(value, 2)}%`
 }
 
 .macd-timeframe__header i,
-.macd-timeframe__header b {
+.macd-timeframe__header b,
+.macd-timeframe__header em {
   font-style: normal;
   font-weight: 500;
 }
 
+.macd-timeframe__header em { color: var(--momentum-text-muted); }
 .macd-timeframe__header i { color: #2f6bff; }
 .macd-timeframe__header b { color: #ff7a00; }
 

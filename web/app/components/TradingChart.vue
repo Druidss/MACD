@@ -21,12 +21,10 @@ let histogramSeries: ISeriesApi<'Histogram'> | undefined
 let difSeries: ISeriesApi<'Line'> | undefined
 let deaSeries: ISeriesApi<'Line'> | undefined
 let resizeObserver: ResizeObserver | undefined
-
-const visiblePointStart = () => Math.max(0, props.points.length - (props.mode === 'mini' ? 72 : 56))
+let hasSetInitialRange = false
 
 function setSeriesData() {
-  const startIndex = visiblePointStart()
-  const points = props.points.slice(startIndex)
+  const points = props.points
 
   candleSeries?.setData(points.map(point => ({
     time: point.time as UTCTimestamp,
@@ -49,11 +47,19 @@ function setSeriesData() {
   histogramSeries?.setData(points.map((point, index) => ({
     time: point.time as UTCTimestamp,
     value: point.histogram,
-    color: getMacdHistogramColor(point.histogram, props.points[startIndex + index - 1]?.histogram)
+    color: getMacdHistogramColor(point.histogram, points[index - 1]?.histogram)
   })))
   difSeries?.setData(points.map(point => ({ time: point.time as UTCTimestamp, value: point.dif })))
   deaSeries?.setData(points.map(point => ({ time: point.time as UTCTimestamp, value: point.dea })))
-  chart?.timeScale().fitContent()
+
+  if (chart && !hasSetInitialRange && points.length > 0) {
+    const initialBars = props.mode === 'mini' ? 96 : 120
+    chart.timeScale().setVisibleLogicalRange({
+      from: Math.max(0, points.length - initialBars),
+      to: points.length + 2
+    })
+    hasSetInitialRange = true
+  }
 }
 
 onMounted(async () => {
@@ -104,8 +110,19 @@ onMounted(async () => {
         rightOffset: isMini ? 0 : 2,
         barSpacing: isMini ? 6 : 11
       },
-      handleScale: isPrice,
-      handleScroll: isPrice
+      handleScale: {
+        mouseWheel: true,
+        pinch: true,
+        axisPressedMouseMove: { time: true, price: isPrice },
+        axisDoubleClickReset: { time: true, price: isPrice }
+      },
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: false
+      },
+      kineticScroll: { mouse: true, touch: true }
     })
 
     if (isPrice) {
@@ -193,6 +210,11 @@ onBeforeUnmount(() => {
 .trading-chart {
   width: 100%;
   height: 100%;
+  cursor: grab;
+}
+
+.trading-chart:active {
+  cursor: grabbing;
 }
 
 .trading-chart--price { min-height: 280px; }

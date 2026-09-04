@@ -66,6 +66,7 @@ onBeforeUnmount(() => {
     <DashboardHeader
       :pending="pending"
       :updated-at="updatedAt"
+      :source="dashboard?.source"
       :active-view="activeView"
       @refresh="requestRefresh"
       @change-view="activeView = $event"

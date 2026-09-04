@@ -20,6 +20,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     tradingviewWebhookSecret: '',
     binanceBaseUrl: 'https://fapi.binance.com',
+    marketFetchLimit: 1_000,
+    marketCacheLimit: 5_000,
     public: {
       dashboardPollMs: 30_000
     }
@@ -29,6 +31,10 @@ export default defineNuxtConfig({
       signals: {
         driver: 'fs',
         base: './.data/signals'
+      },
+      market: {
+        driver: 'fs',
+        base: './.data/market'
       }
     }
   },

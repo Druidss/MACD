@@ -13,14 +13,21 @@ export default defineEventHandler(async (event): Promise<DashboardPayload> => {
     const entries = await Promise.all(
       dashboardIntervals.map(async timeframe => [
         timeframe,
-        await fetchMarketFrame(config.binanceBaseUrl, symbol, timeframe)
+        await fetchMarketFrame(config.binanceBaseUrl, symbol, timeframe, {
+          fetchLimit: Number(config.marketFetchLimit),
+          cacheLimit: Number(config.marketCacheLimit)
+        })
       ] as const)
     )
     const frames = Object.fromEntries(entries) as DashboardPayload['frames']
+    const frameSources = new Set(Object.values(frames).map(frame => frame.dataSource))
+    const source: DashboardPayload['source'] = frameSources.size === 1
+      ? Object.values(frames)[0]!.dataSource
+      : 'mixed'
 
     return {
       generatedAt: new Date().toISOString(),
-      source: 'binance-futures',
+      source,
       symbol,
       selectedInterval,
       frames

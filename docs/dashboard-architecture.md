@@ -20,6 +20,8 @@ Browser / Nuxt UI ---- GET /api/dashboard ----> Nuxt Nitro server ----> Binance 
                                                        |
 TradingView ---- POST /api/webhooks/tradingview ------>+----> local storage (.data/signals)
                   public HTTPS server address
+
+Nuxt Nitro server ---- merge / fallback ----> local K-line cache (.data/market)
 ```
 
 ## 前端
@@ -29,6 +31,7 @@ TradingView ---- POST /api/webhooks/tradingview ------>+----> local storage (.da
 - Lightweight Charts 渲染真实 K 线、EMA 和 MACD
 - 颜色、圆角、间距、字体层级按照 Figma `Momentum Field / OKX Dashboard` 还原
 - 默认 30 秒刷新一次，支持 1H、6H、1D 切换
+- 每个周期向浏览器提供最多 1000 根 K 线；初始聚焦最近 96–120 根，完整历史可左右拖拽和缩放
 - Overview、Positions、Signals 导航可切换；Signals 页面直接显示 webhook 已接收的数据
 - Positions 当前明确显示“未连接”，避免误以为系统已经持有 Binance 私有 API 权限或可以自动下单
 
@@ -37,6 +40,8 @@ TradingView ---- POST /api/webhooks/tradingview ------>+----> local storage (.da
 ### `GET /api/dashboard`
 
 - 并行读取 Binance BTCUSDT 的 1H、6H、1D K 线
+- 每个周期单次请求 1000 根，并与项目内 `.data/market` 文件缓存按开盘时间合并、去重
+- 每个周期本地最多保留 5000 根；Binance 暂时不可用时自动回退到本地缓存
 - 服务端计算 EMA 6/13/26/52、DIF、DEA、MACD 柱
 - 生成缩量状态和 EMA26/52 多空状态
 - 行情结果在单实例内缓存 15 秒，减少 Binance 请求

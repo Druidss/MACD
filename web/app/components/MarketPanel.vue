@@ -58,6 +58,9 @@ const priceChange = computed(() => `${props.frame.priceChangePct >= 0 ? '+' : ''
     </div>
 
     <div class="price-chart-card">
+      <div class="chart-range-meta mono">
+        {{ frame.points.length }} BARS · {{ frame.dataSource === 'local-cache' ? 'CACHE' : 'LIVE' }} · DRAG / ZOOM
+      </div>
       <TradingChart mode="price" :points="frame.points" />
     </div>
 
@@ -204,6 +207,17 @@ const priceChange = computed(() => `${props.frame.priceChangePct >= 0 ? '+' : ''
 
 .price-chart-card {
   padding: 18px 12px 6px;
+}
+
+.chart-range-meta {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 16px;
+  color: var(--momentum-text-muted);
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  pointer-events: none;
 }
 
 .macd-chart-card {

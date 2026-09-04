@@ -3,6 +3,7 @@ import type {
   DashboardInterval,
   EmaStatus,
   MacdStatus,
+  MarketDataSource,
   MarketFrame,
   VolumeStatus
 } from '#shared/types/dashboard'
@@ -28,6 +29,42 @@ interface CachedFrame {
 }
 
 const frameCache = new Map<string, CachedFrame>()
+
+const DEFAULT_FETCH_LIMIT = 1_000
+const DEFAULT_CACHE_LIMIT = 5_000
+const MINIMUM_FRAME_ROWS = 60
+
+interface MarketFetchOptions {
+  fetchLimit?: number
+  cacheLimit?: number
+}
+
+function normalizedLimit(value: number | undefined, fallback: number, minimum: number, maximum: number): number {
+  if (!Number.isFinite(value)) return fallback
+  return Math.min(Math.max(Math.floor(value!), minimum), maximum)
+}
+
+function isBinanceKline(value: unknown): value is BinanceKline {
+  return Array.isArray(value)
+    && value.length >= 12
+    && Number.isFinite(Number(value[0]))
+}
+
+export function mergeKlines(
+  cachedRows: BinanceKline[],
+  remoteRows: BinanceKline[],
+  limit = DEFAULT_CACHE_LIMIT
+): BinanceKline[] {
+  const rowsByOpenTime = new Map<number, BinanceKline>()
+
+  for (const row of [...cachedRows, ...remoteRows]) {
+    if (isBinanceKline(row)) rowsByOpenTime.set(Number(row[0]), row)
+  }
+
+  return [...rowsByOpenTime.values()]
+    .sort((left, right) => Number(left[0]) - Number(right[0]))
+    .slice(-Math.max(limit, MINIMUM_FRAME_ROWS))
+}
 
 function calculateEma(values: number[], period: number): number[] {
   const first = values[0]
@@ -119,8 +156,13 @@ function buildEmaStatus(timeframe: DashboardInterval, points: CandlePoint[]): Em
   }
 }
 
-export function buildMarketFrame(timeframe: DashboardInterval, rows: BinanceKline[]): MarketFrame {
-  if (rows.length < 60) {
+export function buildMarketFrame(
+  timeframe: DashboardInterval,
+  rows: BinanceKline[],
+  dataSource: MarketDataSource = 'binance-futures',
+  availablePoints = rows.length
+): MarketFrame {
+  if (rows.length < MINIMUM_FRAME_ROWS) {
     throw createError({ statusCode: 502, statusMessage: `Insufficient Binance data for ${timeframe}` })
   }
 
@@ -131,6 +173,8 @@ export function buildMarketFrame(timeframe: DashboardInterval, rows: BinanceKlin
   return {
     timeframe,
     points,
+    dataSource,
+    availablePoints,
     lastPrice: latest.close,
     priceChangePct: ((latest.close - previous.close) / previous.close) * 100,
     macd: buildMacdStatus(timeframe, points),
@@ -142,26 +186,67 @@ export function buildMarketFrame(timeframe: DashboardInterval, rows: BinanceKlin
 export async function fetchMarketFrame(
   baseUrl: string,
   symbol: string,
-  timeframe: DashboardInterval
+  timeframe: DashboardInterval,
+  options: MarketFetchOptions = {}
 ): Promise<MarketFrame> {
-  const cacheKey = `${baseUrl}:${symbol}:${timeframe}`
+  const fetchLimit = normalizedLimit(options.fetchLimit, DEFAULT_FETCH_LIMIT, MINIMUM_FRAME_ROWS, 1_500)
+  const cacheLimit = normalizedLimit(options.cacheLimit, DEFAULT_CACHE_LIMIT, fetchLimit, 50_000)
+  const cacheKey = `${baseUrl}:${symbol}:${timeframe}:${fetchLimit}:${cacheLimit}`
   const cached = frameCache.get(cacheKey)
 
   if (cached && cached.expiresAt > Date.now()) {
     return cached.frame
   }
 
-  const rows = await $fetch<BinanceKline[]>(`${baseUrl}/fapi/v1/klines`, {
-    query: {
-      symbol,
-      interval: timeframe,
-      limit: 240
-    },
-    timeout: 8_000,
-    retry: 1
-  })
+  const storage = useStorage<BinanceKline[]>('market')
+  const storageKey = `${symbol.toLowerCase()}/${timeframe}`
+  let locallyStoredRows: BinanceKline[] = []
 
-  const frame = buildMarketFrame(timeframe, rows)
+  try {
+    const storedRows = await storage.getItem(storageKey)
+    locallyStoredRows = Array.isArray(storedRows) ? storedRows.filter(isBinanceKline) : []
+  } catch (error) {
+    console.warn(`Unable to read local market cache for ${symbol} ${timeframe}`, error)
+  }
+
+  let frame: MarketFrame
+
+  try {
+    const remoteRows = await $fetch<BinanceKline[]>(`${baseUrl}/fapi/v1/klines`, {
+      query: {
+        symbol,
+        interval: timeframe,
+        limit: fetchLimit
+      },
+      timeout: 8_000,
+      retry: 1
+    })
+    const mergedRows = mergeKlines(locallyStoredRows, remoteRows, cacheLimit)
+
+    try {
+      await storage.setItem(storageKey, mergedRows)
+    } catch (error) {
+      console.warn(`Unable to write local market cache for ${symbol} ${timeframe}`, error)
+    }
+
+    frame = buildMarketFrame(
+      timeframe,
+      mergedRows.slice(-fetchLimit),
+      'binance-futures',
+      mergedRows.length
+    )
+  } catch (error) {
+    if (locallyStoredRows.length < MINIMUM_FRAME_ROWS) throw error
+
+    console.warn(`Binance unavailable; using local market cache for ${symbol} ${timeframe}`, error)
+    frame = buildMarketFrame(
+      timeframe,
+      locallyStoredRows.slice(-fetchLimit),
+      'local-cache',
+      locallyStoredRows.length
+    )
+  }
+
   frameCache.set(cacheKey, { frame, expiresAt: Date.now() + 15_000 })
   return frame
 }
