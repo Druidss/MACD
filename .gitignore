@@ -1,17 +1,4 @@
-# Python 缓存
-__pycache__/
-*.py[cod]
-
-# macOS
-.DS_Store
-
-# 定时任务运行时产物（每次运行自动生成）
-data/analysis_reports/cron_6h.log
-
-# Nuxt dashboard
-web/node_modules/
-web/.nuxt/
-web/.output/
-web/.data/
-web/.env
-web/coverage/
+# 这个仓库只版本控制根目录的 Pine Script 源文件。
+/*
+!/.gitignore
+!/*.pine
