@@ -1,6 +1,7 @@
 # BTC 日线 MACD 回测
 
 后续实验：[横盘过滤结果](FILTER_REPORT.md)。
+后续实验：[EMA52−2ATR退出](ATR_STOP_REPORT.md)。
 
 ## 结论
 

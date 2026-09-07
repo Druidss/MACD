@@ -1,0 +1,867 @@
+{
+  "status": "post-hoc exploration",
+  "formula": "EMA52 - 2 * ATR14; dynamic daily; close signal, next-open fill",
+  "bufferStats": {
+    "min": 2452.2624661535115,
+    "median": 5568.978566394803,
+    "max": 10282.107293693649
+  },
+  "results": [
+    {
+      "config": {
+        "id": "ema25_cross",
+        "fast": 25,
+        "regime": "original",
+        "short": false,
+        "rearm": false,
+        "exit": "cross"
+      },
+      "full": {
+        "id": "ema25_cross",
+        "returnPct": 51.943445420836774,
+        "realizedPct": 27.544447945006556,
+        "closeDD": 23.535902059947915,
+        "drawdown": 24.373555558169247,
+        "trades": 15,
+        "winPct": 33.33333333333333,
+        "pf": 1.7962698336062968,
+        "exposurePct": 32.6530612244898,
+        "fees": 313.05750229679745,
+        "open": {
+          "side": 1,
+          "entryDate": "2026-08-18",
+          "entry": 64532.11,
+          "unrealized": 2449.899747583025
+        },
+        "holdReturnPct": 89.90716117225645,
+        "holdCloseDD": 52.98973977957024
+      },
+      "periods": {
+        "train": {
+          "id": "ema25_cross",
+          "returnPct": 30.173419413690606,
+          "realizedPct": -19.352443973879506,
+          "closeDD": 23.535902059947915,
+          "drawdown": 24.373555558169247,
+          "trades": 4,
+          "winPct": 0,
+          "pf": 0,
+          "exposurePct": 31.420765027322407,
+          "fees": 88.14289850111317,
+          "open": {
+            "side": 1,
+            "entryDate": "2024-10-12",
+            "entry": 62539.99,
+            "unrealized": 4962.586338757011
+          },
+          "holdReturnPct": 121.20576455446772,
+          "holdCloseDD": 26.16651639092152
+        },
+        "validation": {
+          "id": "ema25_cross",
+          "returnPct": -7.796904695481588,
+          "realizedPct": -7.796904695481587,
+          "closeDD": 15.062922834009468,
+          "drawdown": 22.47307858232516,
+          "trades": 7,
+          "winPct": 28.57142857142857,
+          "pf": 0.5042075758206531,
+          "exposurePct": 32.32876712328767,
+          "fees": 139.35966919965148,
+          "open": null,
+          "holdReturnPct": -6.434722578438914,
+          "holdCloseDD": 32.04657129752792
+        },
+        "test": {
+          "id": "ema25_cross",
+          "returnPct": 26.585960899473605,
+          "realizedPct": 2.1869634236433693,
+          "closeDD": 11.906678825801594,
+          "drawdown": 12.548206145028193,
+          "trades": 4,
+          "winPct": 50,
+          "pf": 1.5111174624364792,
+          "exposurePct": 34.13654618473896,
+          "fees": 90.29899533770205,
+          "open": {
+            "side": 1,
+            "entryDate": "2026-08-18",
+            "entry": 64532.11,
+            "unrealized": 2449.899747583025
+          },
+          "holdReturnPct": -8.436028767729546,
+          "holdCloseDD": 39.56786613551909
+        }
+      },
+      "slip10": {
+        "id": "ema25_cross",
+        "returnPct": 48.764036935956035,
+        "realizedPct": 24.489414082978733,
+        "closeDD": 24.18192877013972,
+        "drawdown": 25.114490631223536,
+        "trades": 15,
+        "winPct": 26.666666666666668,
+        "pf": 1.6693884157167624,
+        "exposurePct": 32.6530612244898,
+        "fees": 312.75169310139927,
+        "open": {
+          "side": 1,
+          "entryDate": "2026-08-18",
+          "entry": 64596.64210999999,
+          "unrealized": 2437.462285297729
+        },
+        "holdReturnPct": 89.71734382842806,
+        "holdCloseDD": 52.98975775954112
+      }
+    },
+    {
+      "config": {
+        "id": "ema25_level",
+        "fast": 25,
+        "regime": "original",
+        "short": false,
+        "rearm": false,
+        "exit": "level"
+      },
+      "full": {
+        "id": "ema25_level",
+        "returnPct": 44.92324170171109,
+        "realizedPct": 20.52424422588087,
+        "closeDD": 23.535902059947915,
+        "drawdown": 24.373555558169247,
+        "trades": 15,
+        "winPct": 26.666666666666668,
+        "pf": 1.581677811418094,
+        "exposurePct": 26.632653061224488,
+        "fees": 312.3547792017898,
+        "open": {
+          "side": 1,
+          "entryDate": "2026-08-18",
+          "entry": 64532.11,
+          "unrealized": 2449.899747583025
+        },
+        "holdReturnPct": 89.90716117225645,
+        "holdCloseDD": 52.98973977957024
+      },
+      "periods": {
+        "train": {
+          "id": "ema25_level",
+          "returnPct": 30.173419413690606,
+          "realizedPct": -19.352443973879506,
+          "closeDD": 23.535902059947915,
+          "drawdown": 24.373555558169247,
+          "trades": 4,
+          "winPct": 0,
+          "pf": 0,
+          "exposurePct": 31.420765027322407,
+          "fees": 88.14289850111317,
+          "open": {
+            "side": 1,
+            "entryDate": "2024-10-12",
+            "entry": 62539.99,
+            "unrealized": 4962.586338757011
+          },
+          "holdReturnPct": 121.20576455446772,
+          "holdCloseDD": 26.16651639092152
+        },
+        "validation": {
+          "id": "ema25_level",
+          "returnPct": -7.796904695481588,
+          "realizedPct": -7.796904695481587,
+          "closeDD": 15.062922834009468,
+          "drawdown": 22.47307858232516,
+          "trades": 7,
+          "winPct": 28.57142857142857,
+          "pf": 0.5042075758206531,
+          "exposurePct": 32.32876712328767,
+          "fees": 139.35966919965148,
+          "open": null,
+          "holdReturnPct": -6.434722578438914,
+          "holdCloseDD": 32.04657129752792
+        },
+        "test": {
+          "id": "ema25_level",
+          "returnPct": 19.56575718034792,
+          "realizedPct": -4.833240295482315,
+          "closeDD": 5.725217137045456,
+          "drawdown": 6.462492667769888,
+          "trades": 4,
+          "winPct": 25,
+          "pf": 0.02780933595366569,
+          "exposurePct": 10.441767068273093,
+          "fees": 89.59627224269447,
+          "open": {
+            "side": 1,
+            "entryDate": "2026-08-18",
+            "entry": 64532.11,
+            "unrealized": 2449.899747583025
+          },
+          "holdReturnPct": -8.436028767729546,
+          "holdCloseDD": 39.56786613551909
+        }
+      },
+      "slip10": {
+        "id": "ema25_level",
+        "returnPct": 41.75785959788754,
+        "realizedPct": 17.48323674491024,
+        "closeDD": 24.18192877013972,
+        "drawdown": 25.114490631223536,
+        "trades": 15,
+        "winPct": 20,
+        "pf": 1.466517206951263,
+        "exposurePct": 26.632653061224488,
+        "fees": 312.05037404853954,
+        "open": {
+          "side": 1,
+          "entryDate": "2026-08-18",
+          "entry": 64596.64210999999,
+          "unrealized": 2437.462285297729
+        },
+        "holdReturnPct": 89.71734382842806,
+        "holdCloseDD": 52.98975775954112
+      }
+    },
+    {
+      "config": {
+        "id": "ema25_atr_cross",
+        "fast": 25,
+        "regime": "original",
+        "short": false,
+        "rearm": false,
+        "exit": "atr_cross"
+      },
+      "full": {
+        "id": "ema25_atr_cross",
+        "returnPct": 34.5325918289286,
+        "realizedPct": 9.829768497328322,
+        "closeDD": 29.31069970118684,
+        "drawdown": 31.418718514335787,
+        "trades": 5,
+        "winPct": 20,
+        "pf": 1.3000342174341744,
+        "exposurePct": 45.816326530612244,
+        "fees": 111.08406091064347,
+        "open": {
+          "side": 1,
+          "entryDate": "2026-07-26",
+          "entry": 64375.01,
+          "unrealized": 2480.2823331600257
+        },
+        "holdReturnPct": 89.90716117225645,
+        "holdCloseDD": 52.98973977957024
+      },
+      "periods": {
+        "train": {
+          "id": "ema25_atr_cross",
+          "returnPct": 28.11092958405279,
+          "realizedPct": -22.50903949110102,
+          "closeDD": 29.31069970118684,
+          "drawdown": 31.418718514335787,
+          "trades": 2,
+          "winPct": 0,
+          "pf": 0,
+          "exposurePct": 51.09289617486339,
+          "fees": 47.78688293382372,
+          "open": {
+            "side": 1,
+            "entryDate": "2024-10-05",
+            "entry": 62086,
+            "unrealized": 5071.996907515381
+          },
+          "holdReturnPct": 121.20576455446772,
+          "holdCloseDD": 26.16651639092152
+        },
+        "validation": {
+          "id": "ema25_atr_cross",
+          "returnPct": -11.909844488509913,
+          "realizedPct": -11.909844488509911,
+          "closeDD": 20.15876869913948,
+          "drawdown": 22.283046142408246,
+          "trades": 2,
+          "winPct": 0,
+          "pf": 0,
+          "exposurePct": 57.80821917808219,
+          "fees": 38.84786341456357,
+          "open": null,
+          "holdReturnPct": -6.434722578438914,
+          "holdCloseDD": 32.04657129752792
+        },
+        "test": {
+          "id": "ema25_atr_cross",
+          "returnPct": 17.60553192863197,
+          "realizedPct": -7.097291402968282,
+          "closeDD": 10.062759369554685,
+          "drawdown": 10.91072023880512,
+          "trades": 1,
+          "winPct": 0,
+          "pf": 0,
+          "exposurePct": 19.67871485943775,
+          "fees": 29.309580440143314,
+          "open": {
+            "side": 1,
+            "entryDate": "2026-07-26",
+            "entry": 64375.01,
+            "unrealized": 2480.2823331600257
+          },
+          "holdReturnPct": -8.436028767729546,
+          "holdCloseDD": 39.56786613551909
+        }
+      },
+      "slip10": {
+        "id": "ema25_atr_cross",
+        "returnPct": 33.38827378664468,
+        "realizedPct": 8.810128600230819,
+        "closeDD": 29.669016325440428,
+        "drawdown": 31.777037137260102,
+        "trades": 5,
+        "winPct": 20,
+        "pf": 1.2630148275167308,
+        "exposurePct": 45.816326530612244,
+        "fees": 110.98199485487797,
+        "open": {
+          "side": 1,
+          "entryDate": "2026-07-26",
+          "entry": 64439.38501,
+          "unrealized": 2467.814518641385
+        },
+        "holdReturnPct": 89.71734382842806,
+        "holdCloseDD": 52.98975775954112
+      }
+    },
+    {
+      "config": {
+        "id": "ema25_atr_level",
+        "fast": 25,
+        "regime": "original",
+        "short": false,
+        "rearm": false,
+        "exit": "atr_level"
+      },
+      "full": {
+        "id": "ema25_atr_level",
+        "returnPct": 34.5325918289286,
+        "realizedPct": 9.829768497328322,
+        "closeDD": 29.31069970118684,
+        "drawdown": 31.418718514335787,
+        "trades": 5,
+        "winPct": 20,
+        "pf": 1.3000342174341744,
+        "exposurePct": 45.816326530612244,
+        "fees": 111.08406091064347,
+        "open": {
+          "side": 1,
+          "entryDate": "2026-07-26",
+          "entry": 64375.01,
+          "unrealized": 2480.2823331600257
+        },
+        "holdReturnPct": 89.90716117225645,
+        "holdCloseDD": 52.98973977957024
+      },
+      "periods": {
+        "train": {
+          "id": "ema25_atr_level",
+          "returnPct": 28.11092958405279,
+          "realizedPct": -22.50903949110102,
+          "closeDD": 29.31069970118684,
+          "drawdown": 31.418718514335787,
+          "trades": 2,
+          "winPct": 0,
+          "pf": 0,
+          "exposurePct": 51.09289617486339,
+          "fees": 47.78688293382372,
+          "open": {
+            "side": 1,
+            "entryDate": "2024-10-05",
+            "entry": 62086,
+            "unrealized": 5071.996907515381
+          },
+          "holdReturnPct": 121.20576455446772,
+          "holdCloseDD": 26.16651639092152
+        },
+        "validation": {
+          "id": "ema25_atr_level",
+          "returnPct": -11.909844488509913,
+          "realizedPct": -11.909844488509911,
+          "closeDD": 20.15876869913948,
+          "drawdown": 22.283046142408246,
+          "trades": 2,
+          "winPct": 0,
+          "pf": 0,
+          "exposurePct": 57.80821917808219,
+          "fees": 38.84786341456357,
+          "open": null,
+          "holdReturnPct": -6.434722578438914,
+          "holdCloseDD": 32.04657129752792
+        },
+        "test": {
+          "id": "ema25_atr_level",
+          "returnPct": 17.60553192863197,
+          "realizedPct": -7.097291402968282,
+          "closeDD": 10.062759369554685,
+          "drawdown": 10.91072023880512,
+          "trades": 1,
+          "winPct": 0,
+          "pf": 0,
+          "exposurePct": 19.67871485943775,
+          "fees": 29.309580440143314,
+          "open": {
+            "side": 1,
+            "entryDate": "2026-07-26",
+            "entry": 64375.01,
+            "unrealized": 2480.2823331600257
+          },
+          "holdReturnPct": -8.436028767729546,
+          "holdCloseDD": 39.56786613551909
+        }
+      },
+      "slip10": {
+        "id": "ema25_atr_level",
+        "returnPct": 33.38827378664468,
+        "realizedPct": 8.810128600230819,
+        "closeDD": 29.669016325440428,
+        "drawdown": 31.777037137260102,
+        "trades": 5,
+        "winPct": 20,
+        "pf": 1.2630148275167308,
+        "exposurePct": 45.816326530612244,
+        "fees": 110.98199485487797,
+        "open": {
+          "side": 1,
+          "entryDate": "2026-07-26",
+          "entry": 64439.38501,
+          "unrealized": 2467.814518641385
+        },
+        "holdReturnPct": 89.71734382842806,
+        "holdCloseDD": 52.98975775954112
+      }
+    },
+    {
+      "config": {
+        "id": "rearm_cross",
+        "fast": 25,
+        "regime": "original",
+        "short": false,
+        "rearm": true,
+        "exit": "cross"
+      },
+      "full": {
+        "id": "rearm_cross",
+        "returnPct": 79.42214587236806,
+        "realizedPct": 55.02314839653785,
+        "closeDD": 27.68665577338688,
+        "drawdown": 28.223190688583106,
+        "trades": 20,
+        "winPct": 30,
+        "pf": 2.089594591372542,
+        "exposurePct": 43.57142857142857,
+        "fees": 415.9082230627165,
+        "open": {
+          "side": 1,
+          "entryDate": "2026-08-18",
+          "entry": 64532.11,
+          "unrealized": 2449.899747583025
+        },
+        "holdReturnPct": 89.90716117225645,
+        "holdCloseDD": 52.98973977957024
+      },
+      "periods": {
+        "train": {
+          "id": "rearm_cross",
+          "returnPct": 68.60029179069198,
+          "realizedPct": 19.074428403121907,
+          "closeDD": 27.68665577338688,
+          "drawdown": 28.223190688583106,
+          "trades": 6,
+          "winPct": 16.666666666666664,
+          "pf": 1.7685353740334244,
+          "exposurePct": 54.37158469945356,
+          "fees": 132.02947231262482,
+          "open": {
+            "side": 1,
+            "entryDate": "2024-10-12",
+            "entry": 62539.99,
+            "unrealized": 4962.586338757011
+          },
+          "holdReturnPct": 121.20576455446772,
+          "holdCloseDD": 26.16651639092152
+        },
+        "validation": {
+          "id": "rearm_cross",
+          "returnPct": -11.770701778391789,
+          "realizedPct": -11.770701778391786,
+          "closeDD": 17.465527778122137,
+          "drawdown": 26.190383632220044,
+          "trades": 8,
+          "winPct": 25,
+          "pf": 0.4025007610958648,
+          "exposurePct": 33.42465753424658,
+          "fees": 158.98191173389472,
+          "open": null,
+          "holdReturnPct": -6.434722578438914,
+          "holdCloseDD": 32.04657129752792
+        },
+        "test": {
+          "id": "rearm_cross",
+          "returnPct": 19.611586056913666,
+          "realizedPct": -4.787411418916564,
+          "closeDD": 15.861932291686538,
+          "drawdown": 17.189735326724445,
+          "trades": 6,
+          "winPct": 33.33333333333333,
+          "pf": 0.5544573391701164,
+          "exposurePct": 41.76706827309237,
+          "fees": 129.64089975786624,
+          "open": {
+            "side": 1,
+            "entryDate": "2026-08-18",
+            "entry": 64532.11,
+            "unrealized": 2449.899747583025
+          },
+          "holdReturnPct": -8.436028767729546,
+          "holdCloseDD": 39.56786613551909
+        }
+      },
+      "slip10": {
+        "id": "rearm_cross",
+        "returnPct": 75.18783488908274,
+        "realizedPct": 50.913212036105435,
+        "closeDD": 28.366949699045847,
+        "drawdown": 28.964275239473412,
+        "trades": 20,
+        "winPct": 25,
+        "pf": 1.95593964154302,
+        "exposurePct": 43.57142857142857,
+        "fees": 415.49681802163207,
+        "open": {
+          "side": 1,
+          "entryDate": "2026-08-18",
+          "entry": 64596.64210999999,
+          "unrealized": 2437.462285297729
+        },
+        "holdReturnPct": 89.71734382842806,
+        "holdCloseDD": 52.98975775954112
+      }
+    },
+    {
+      "config": {
+        "id": "rearm_level",
+        "fast": 25,
+        "regime": "original",
+        "short": false,
+        "rearm": true,
+        "exit": "level"
+      },
+      "full": {
+        "id": "rearm_level",
+        "returnPct": 76.36737254532629,
+        "realizedPct": 51.968375069496076,
+        "closeDD": 27.68665577338688,
+        "drawdown": 28.223190688583106,
+        "trades": 22,
+        "winPct": 27.27272727272727,
+        "pf": 2.020022678464276,
+        "exposurePct": 40.30612244897959,
+        "fees": 455.64247998693656,
+        "open": {
+          "side": 1,
+          "entryDate": "2026-08-18",
+          "entry": 64532.11,
+          "unrealized": 2449.899747583025
+        },
+        "holdReturnPct": 89.90716117225645,
+        "holdCloseDD": 52.98973977957024
+      },
+      "periods": {
+        "train": {
+          "id": "rearm_level",
+          "returnPct": 68.60029179069198,
+          "realizedPct": 19.074428403121907,
+          "closeDD": 27.68665577338688,
+          "drawdown": 28.223190688583106,
+          "trades": 6,
+          "winPct": 16.666666666666664,
+          "pf": 1.7685353740334244,
+          "exposurePct": 54.37158469945356,
+          "fees": 132.02947231262482,
+          "open": {
+            "side": 1,
+            "entryDate": "2024-10-12",
+            "entry": 62539.99,
+            "unrealized": 4962.586338757011
+          },
+          "holdReturnPct": 121.20576455446772,
+          "holdCloseDD": 26.16651639092152
+        },
+        "validation": {
+          "id": "rearm_level",
+          "returnPct": -11.770701778391789,
+          "realizedPct": -11.770701778391786,
+          "closeDD": 17.465527778122137,
+          "drawdown": 26.190383632220044,
+          "trades": 8,
+          "winPct": 25,
+          "pf": 0.4025007610958648,
+          "exposurePct": 33.42465753424658,
+          "fees": 158.98191173389472,
+          "open": null,
+          "holdReturnPct": -6.434722578438914,
+          "holdCloseDD": 32.04657129752792
+        },
+        "test": {
+          "id": "rearm_level",
+          "returnPct": 16.556812729871908,
+          "realizedPct": -7.842184745958335,
+          "closeDD": 15.856865322613675,
+          "drawdown": 16.53641031677099,
+          "trades": 8,
+          "winPct": 25,
+          "pf": 0.2994699487395474,
+          "exposurePct": 28.915662650602407,
+          "fees": 169.37515668208627,
+          "open": {
+            "side": 1,
+            "entryDate": "2026-08-18",
+            "entry": 64532.11,
+            "unrealized": 2449.899747583025
+          },
+          "holdReturnPct": -8.436028767729546,
+          "holdCloseDD": 39.56786613551909
+        }
+      },
+      "slip10": {
+        "id": "rearm_level",
+        "returnPct": 71.73916500525186,
+        "realizedPct": 47.46454215227457,
+        "closeDD": 28.366949699045847,
+        "drawdown": 28.964275239473412,
+        "trades": 22,
+        "winPct": 22.727272727272727,
+        "pf": 1.8772107495533428,
+        "exposurePct": 40.30612244897959,
+        "fees": 455.1916458610885,
+        "open": {
+          "side": 1,
+          "entryDate": "2026-08-18",
+          "entry": 64596.64210999999,
+          "unrealized": 2437.462285297729
+        },
+        "holdReturnPct": 89.71734382842806,
+        "holdCloseDD": 52.98975775954112
+      }
+    },
+    {
+      "config": {
+        "id": "rearm_atr_cross",
+        "fast": 25,
+        "regime": "original",
+        "short": false,
+        "rearm": true,
+        "exit": "atr_cross"
+      },
+      "full": {
+        "id": "rearm_atr_cross",
+        "returnPct": 65.87992750533496,
+        "realizedPct": 45.26707076707715,
+        "closeDD": 28.024178038394854,
+        "drawdown": 29.34270705630102,
+        "trades": 7,
+        "winPct": 28.57142857142857,
+        "pf": 2.524724047356537,
+        "exposurePct": 60,
+        "fees": 154.67137845516288,
+        "open": {
+          "side": 1,
+          "entryDate": "2026-07-22",
+          "entry": 66556.15,
+          "unrealized": 2071.285673825786
+        },
+        "holdReturnPct": 89.90716117225645,
+        "holdCloseDD": 52.98973977957024
+      },
+      "periods": {
+        "train": {
+          "id": "rearm_atr_cross",
+          "returnPct": 70.81537509113593,
+          "realizedPct": 23.734146643144804,
+          "closeDD": 28.024178038394854,
+          "drawdown": 29.34270705630102,
+          "trades": 2,
+          "winPct": 50,
+          "pf": 2.981156444923256,
+          "exposurePct": 68.30601092896174,
+          "fees": 52.41583049480929,
+          "open": {
+            "side": 1,
+            "entryDate": "2024-09-23",
+            "entry": 63578.76,
+            "unrealized": 4718.1228447991125
+          },
+          "holdReturnPct": 121.20576455446772,
+          "holdCloseDD": 26.16651639092152
+        },
+        "validation": {
+          "id": "rearm_atr_cross",
+          "returnPct": -11.909844488509913,
+          "realizedPct": -11.909844488509911,
+          "closeDD": 20.15876869913948,
+          "drawdown": 22.283046142408246,
+          "trades": 2,
+          "winPct": 0,
+          "pf": 0,
+          "exposurePct": 57.80821917808219,
+          "fees": 38.84786341456357,
+          "open": null,
+          "holdReturnPct": -6.434722578438914,
+          "holdCloseDD": 32.04657129752792
+        },
+        "test": {
+          "id": "rearm_atr_cross",
+          "returnPct": 6.059932411490054,
+          "realizedPct": -14.55292432676782,
+          "closeDD": 25.381369824774026,
+          "drawdown": 26.15276281383948,
+          "trades": 3,
+          "winPct": 0,
+          "pf": 0,
+          "exposurePct": 50.20080321285141,
+          "fees": 68.60331087820143,
+          "open": {
+            "side": 1,
+            "entryDate": "2026-07-22",
+            "entry": 66556.15,
+            "unrealized": 2071.285673825786
+          },
+          "holdReturnPct": -8.436028767729546,
+          "holdCloseDD": 39.56786613551909
+        }
+      },
+      "slip10": {
+        "id": "rearm_atr_cross",
+        "returnPct": 64.26889154302502,
+        "realizedPct": 43.77662706924093,
+        "closeDD": 28.281769900099896,
+        "drawdown": 29.600299718743067,
+        "trades": 7,
+        "winPct": 28.57142857142857,
+        "pf": 2.4292365083396774,
+        "exposurePct": 60,
+        "fees": 154.52218489181593,
+        "open": {
+          "side": 1,
+          "entryDate": "2026-07-22",
+          "entry": 66622.70614999998,
+          "unrealized": 2059.22644737841
+        },
+        "holdReturnPct": 89.71734382842806,
+        "holdCloseDD": 52.98975775954112
+      }
+    },
+    {
+      "config": {
+        "id": "rearm_atr_level",
+        "fast": 25,
+        "regime": "original",
+        "short": false,
+        "rearm": true,
+        "exit": "atr_level"
+      },
+      "full": {
+        "id": "rearm_atr_level",
+        "returnPct": 65.87992750533496,
+        "realizedPct": 45.26707076707715,
+        "closeDD": 28.024178038394854,
+        "drawdown": 29.34270705630102,
+        "trades": 7,
+        "winPct": 28.57142857142857,
+        "pf": 2.524724047356537,
+        "exposurePct": 60,
+        "fees": 154.67137845516288,
+        "open": {
+          "side": 1,
+          "entryDate": "2026-07-22",
+          "entry": 66556.15,
+          "unrealized": 2071.285673825786
+        },
+        "holdReturnPct": 89.90716117225645,
+        "holdCloseDD": 52.98973977957024
+      },
+      "periods": {
+        "train": {
+          "id": "rearm_atr_level",
+          "returnPct": 70.81537509113593,
+          "realizedPct": 23.734146643144804,
+          "closeDD": 28.024178038394854,
+          "drawdown": 29.34270705630102,
+          "trades": 2,
+          "winPct": 50,
+          "pf": 2.981156444923256,
+          "exposurePct": 68.30601092896174,
+          "fees": 52.41583049480929,
+          "open": {
+            "side": 1,
+            "entryDate": "2024-09-23",
+            "entry": 63578.76,
+            "unrealized": 4718.1228447991125
+          },
+          "holdReturnPct": 121.20576455446772,
+          "holdCloseDD": 26.16651639092152
+        },
+        "validation": {
+          "id": "rearm_atr_level",
+          "returnPct": -11.909844488509913,
+          "realizedPct": -11.909844488509911,
+          "closeDD": 20.15876869913948,
+          "drawdown": 22.283046142408246,
+          "trades": 2,
+          "winPct": 0,
+          "pf": 0,
+          "exposurePct": 57.80821917808219,
+          "fees": 38.84786341456357,
+          "open": null,
+          "holdReturnPct": -6.434722578438914,
+          "holdCloseDD": 32.04657129752792
+        },
+        "test": {
+          "id": "rearm_atr_level",
+          "returnPct": 6.059932411490054,
+          "realizedPct": -14.55292432676782,
+          "closeDD": 25.381369824774026,
+          "drawdown": 26.15276281383948,
+          "trades": 3,
+          "winPct": 0,
+          "pf": 0,
+          "exposurePct": 50.20080321285141,
+          "fees": 68.60331087820143,
+          "open": {
+            "side": 1,
+            "entryDate": "2026-07-22",
+            "entry": 66556.15,
+            "unrealized": 2071.285673825786
+          },
+          "holdReturnPct": -8.436028767729546,
+          "holdCloseDD": 39.56786613551909
+        }
+      },
+      "slip10": {
+        "id": "rearm_atr_level",
+        "returnPct": 64.26889154302502,
+        "realizedPct": 43.77662706924093,
+        "closeDD": 28.281769900099896,
+        "drawdown": 29.600299718743067,
+        "trades": 7,
+        "winPct": 28.57142857142857,
+        "pf": 2.4292365083396774,
+        "exposurePct": 60,
+        "fees": 154.52218489181593,
+        "open": {
+          "side": 1,
+          "entryDate": "2026-07-22",
+          "entry": 66622.70614999998,
+          "unrealized": 2059.22644737841
+        },
+        "holdReturnPct": 89.71734382842806,
+        "holdCloseDD": 52.98975775954112
+      }
+    }
+  ]
+}

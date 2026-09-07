@@ -113,6 +113,8 @@ function run(v,{from=start,to=cutoff,initial=10000,notional=10000,slip=0,fee=.00
       if(pos.side===-1){if(r.c>e52[i]&&p.c<=e52[i-1])reason='EMA52 cross';}
       else if(v.exit==='cross'){if(r.c<e52[i]-300&&p.c>=e52[i-1]-300)reason='EMA52-300 cross';}
       else if(v.exit==='level'){if(r.c<e52[i]-300)reason='EMA52-300 level';}
+      else if(v.exit==='atr_cross'){if(r.c<e52[i]-2*r.atr&&p.c>=e52[i-1]-2*p.atr)reason='EMA52-2ATR cross';}
+      else if(v.exit==='atr_level'){if(r.c<e52[i]-2*r.atr)reason='EMA52-2ATR level';}
       else if(v.exit==='ema52'){if(r.c<e52[i])reason='EMA52 level';}
       else if(v.exit==='confirm'){if(r.c<e52[i]&&p.c<e52[i-1])reason='2 closes below EMA52';}
       else if(v.exit==='trail'){if(r.c<e52[i]-300||r.c<pos.trail)reason=r.c<pos.trail?'ATR trail close':'EMA52-300 level';}

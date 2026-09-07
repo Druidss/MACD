@@ -14,7 +14,7 @@ strategy("BTC 1D MACD 回测对比",
 
 
 mode = input.string("原策略21多空", "方案", options=["原策略21多空", "仅做多25", "状态补入25（探索）", "结构线段25（验证较差）"])
-exitMode = input.string("下穿52减300", "多单退出", options=["下穿52减300", "低于52减300", "低于52", "连续2日低于52", "3ATR收盘追踪"])
+exitMode = input.string("下穿52减300", "多单退出", options=["下穿52减300", "低于52减300", "下穿52减2ATR", "低于52减2ATR", "低于52", "连续2日低于52", "3ATR收盘追踪"])
 startDate = input.time(timestamp("01 Jan 2024 00:00 +0000"), "开始（UTC）")
 endDate = input.time(timestamp("07 Sep 2026 00:00 +0000"), "结束（UTC，不含）")
 active = time >= startDate and time < endDate
@@ -172,6 +172,9 @@ dea_4h_filter = dea_4h >= min_4h_dea
 short_entry = active and allowShort and ta.crossunder(close, ema21) and is_downtrend_segment and dea_4h_filter and not has_any_position and first_trade_opened
 
 ema52_minus_300 = ema52 - 300
+// Dynamic EMA anchor, not entry-price stop or ratcheting highest-price trail.
+ema52_minus_2atr = ema52 - 2 * atr14
+close_cross_under_ema52_minus_2atr = ta.crossunder(close, ema52_minus_2atr)
 close_cross_under_ema52_minus_300 = ta.crossunder(close, ema52_minus_300)
 close_cross_over_ema52 = ta.crossover(close, ema52)
 
@@ -187,6 +190,8 @@ else
 long_exit_condition = switch exitMode
     "下穿52减300" => close_cross_under_ema52_minus_300
     "低于52减300" => close < ema52_minus_300
+    "下穿52减2ATR" => close_cross_under_ema52_minus_2atr
+    "低于52减2ATR" => close < ema52_minus_2atr
     "低于52" => close < ema52
     "连续2日低于52" => close < ema52 and close[1] < ema52[1]
     => close < ema52_minus_300 or close < trail
@@ -211,6 +216,7 @@ p_ema21 = plot(ema21, "EMA快线", color=color.blue, linewidth=2)
 p_ema52 = plot(ema52, "EMA52", color=color.orange, linewidth=2)
 p_ema144 = plot(ema144, "EMA144", color=color.gray, linewidth=2)
 plot(exitMode == "3ATR收盘追踪" and in_position ? trail : na, "3ATR追踪线", color=color.fuchsia, style=plot.style_linebr)
+plot(exitMode == "下穿52减2ATR" or exitMode == "低于52减2ATR" ? ema52_minus_2atr : na, "EMA52减2ATR14退出线", color=color.red, linewidth=2)
 plot(adx14, "过滤ADX14", display=display.data_window)
 plot(er20, "过滤ER20", display=display.data_window)
 plot(slope52, "EMA52五日变化/ATR14", display=display.data_window)
