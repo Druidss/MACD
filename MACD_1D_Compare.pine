@@ -1,0 +1,209 @@
+//@version=5
+// BTC spot daily comparison; local engine results in backtest/REPORT.md.
+// Original strategy preserved in MACD.pine. Baseline uses normalized sizing; native TV parity not yet verified.
+strategy("BTC 1D MACD 回测对比",
+         shorttitle="MACD 1D Compare",
+         overlay=true,
+         initial_capital=10000,
+         default_qty_type=strategy.cash,
+         default_qty_value=10000,
+         commission_type=strategy.commission.percent,
+         commission_value=0.1,
+         process_orders_on_close=false,
+         margin_long=0, margin_short=0)
+
+
+mode = input.string("原策略21多空", "方案", options=["原策略21多空", "仅做多25", "状态补入25（探索）", "结构线段25（验证较差）"])
+exitMode = input.string("下穿52减300", "多单退出", options=["下穿52减300", "低于52减300", "低于52", "连续2日低于52", "3ATR收盘追踪"])
+startDate = input.time(timestamp("01 Jan 2024 00:00 +0000"), "开始（UTC）")
+endDate = input.time(timestamp("07 Sep 2026 00:00 +0000"), "结束（UTC，不含）")
+active = time >= startDate and time < endDate
+structural = mode == "结构线段25（验证较差）"
+rearm = mode == "状态补入25（探索）"
+allowShort = mode == "原策略21多空"
+if not timeframe.isdaily or timeframe.multiplier != 1
+    runtime.error("请使用标准1D日线图")
+
+groupIndicator = "指标参数"
+candidateFast = input.int(25, "候选EMA周期", minval=1, group=groupIndicator)
+ema21_length = mode == "原策略21多空" ? 21 : candidateFast
+ema52_length = input.int(52, "EMA52", group=groupIndicator)
+ema144_length = input.int(144, "EMA144", group=groupIndicator)
+
+macd_fast = input.int(12, "MACD 快线周期", group=groupIndicator)
+macd_slow = input.int(26, "MACD 慢线周期", group=groupIndicator)
+macd_signal = input.int(9, "MACD 信号线周期", group=groupIndicator)
+
+groupSegment = "线段过滤"
+delay_bars = input.int(25, "下跌线段确认K线数", minval=1, group=groupSegment, tooltip="DEA下穿0轴后，等待N根K线才确认为下跌线段")
+min_downtrend_bars = input.int(2, "上涨线段确认最短K线数", minval=1, group=groupSegment, tooltip="DEA上穿0轴后，等待N根K线才确认为上涨线段")
+
+
+groupFilter = "入场过滤条件"
+max_4h_dif = input.float(1500.0, "4小时MACD快线上限", group=groupFilter, tooltip="4小时周期的MACD DIF值不能超过此阈值")
+min_4h_dea = input.float(-1500.0, "4小时DEA下限", group=groupFilter, tooltip="4小时DEA低于此值时不开空单")
+
+
+groupBelowZero = "零轴下突破"
+enable_below_zero = input.bool(true, "启用零轴下突破", group=groupBelowZero)
+dea_threshold = input.float(-60.0, "DEA阈值", group=groupBelowZero, tooltip="DEA高于此值时视为潜在上涨区间")
+below_zero_timeout = input.int(8, "突破超时K线数", minval=1, group=groupBelowZero, tooltip="DEA高于阈值后，N根K线内必须上穿0轴")
+
+
+
+
+ema21 = ta.ema(close, ema21_length)
+ema52 = ta.ema(close, ema52_length)
+ema144 = ta.ema(close, ema144_length)
+
+[dif, dea, macd_hist] = ta.macd(close, macd_fast, macd_slow, macd_signal)
+
+[dif_4h, dea_4h, macd_hist_4h] = request.security(syminfo.tickerid, "240", ta.macd(close, macd_fast, macd_slow, macd_signal), lookahead=barmerge.lookahead_off)
+
+dea_cross_above_zero = ta.crossover(dea, 0)
+dea_cross_below_zero = ta.crossunder(dea, 0)
+
+var bool in_tradable_segment = false
+var int delay_counter = 0
+var int downtrend_counter = 0
+var int uptrend_counter = 0
+
+var bool in_below_zero_attempt = false  // 是否在零轴下尝试突破中
+var int below_zero_counter = 0  // 零轴下突破计数器
+dea_above_threshold = dea > dea_threshold and dea < 0  // DEA在零轴下且高于阈值
+downtrend_duration_ok = downtrend_counter >= min_downtrend_bars  // 下跌线段持续时间足够
+
+if dea_cross_above_zero
+    uptrend_counter := 1
+    downtrend_counter := 0
+    delay_counter := 0
+    in_below_zero_attempt := false
+    below_zero_counter := 0
+    in_tradable_segment := false  // 暂时不进入可交易区间
+
+if dea_cross_below_zero
+    delay_counter := 1
+    in_tradable_segment := true
+    in_below_zero_attempt := false
+    below_zero_counter := 0
+    uptrend_counter := 0
+else if delay_counter > 0 and delay_counter < delay_bars
+    delay_counter := delay_counter + 1
+    in_tradable_segment := true
+else if delay_counter >= delay_bars
+    in_tradable_segment := false
+
+if uptrend_counter > 0 and uptrend_counter < min_downtrend_bars and dea > 0
+    uptrend_counter := uptrend_counter + 1
+    in_tradable_segment := false  // 还未确认为上涨线段
+else if uptrend_counter >= min_downtrend_bars
+    in_tradable_segment := true
+    uptrend_counter := 0  // 重置计数器
+
+if not in_tradable_segment and not in_below_zero_attempt and uptrend_counter == 0
+    downtrend_counter := downtrend_counter + 1
+else if in_tradable_segment
+    downtrend_counter := 0
+
+if enable_below_zero and dea < 0
+    if dea_above_threshold and not in_below_zero_attempt
+        in_below_zero_attempt := true
+        below_zero_counter := 1
+        in_tradable_segment := true  // 进入潜在上涨区间
+    else if in_below_zero_attempt
+        below_zero_counter := below_zero_counter + 1
+        if below_zero_counter <= below_zero_timeout
+            in_tradable_segment := true
+        else
+            in_below_zero_attempt := false
+            below_zero_counter := 0
+            in_tradable_segment := false
+
+in_delay_period = delay_counter > 0 and delay_counter < delay_bars
+in_below_zero_period = in_below_zero_attempt and below_zero_counter > 0
+
+is_uptrend_segment = dea > 0 and in_tradable_segment and delay_counter == 0 and not in_below_zero_period
+
+is_transition_after_uptrend = in_delay_period
+
+is_purple_breakout_attempt = in_below_zero_period and dea < 80
+
+is_downtrend_segment = not in_tradable_segment
+
+in_position = strategy.position_size > 0
+in_short_position = strategy.position_size < 0
+has_any_position = in_position or in_short_position
+
+var bool first_trade_opened = false
+
+macd_4h_filter = structural or dif_4h <= max_4h_dif
+original_long_zone = is_uptrend_segment or is_purple_breakout_attempt
+struct_up = ema21 > ema52 and ema52 > ema52[1] and dea > 0
+struct_down = ema21 < ema52 and ema52 < ema52[1] and dea < 0
+in_long_signal_zone = structural ? struct_up : original_long_zone
+cross_entry = ta.crossover(close, ema21)
+state_entry = rearm and original_long_zone and not original_long_zone[1] and close > ema21
+entry_trigger = structural ? close > ema21 : (cross_entry or state_entry)
+
+long_entry = active and entry_trigger and in_long_signal_zone and macd_4h_filter and not has_any_position
+
+dea_4h_filter = dea_4h >= min_4h_dea
+short_entry = active and allowShort and ta.crossunder(close, ema21) and is_downtrend_segment and dea_4h_filter and not has_any_position and first_trade_opened
+
+ema52_minus_300 = ema52 - 300
+close_cross_under_ema52_minus_300 = ta.crossunder(close, ema52_minus_300)
+close_cross_over_ema52 = ta.crossover(close, ema52)
+
+atr14 = ta.atr(14)
+var float highestHeld = na
+var float trail = na
+if in_position
+    highestHeld := strategy.position_size[1] <= 0 ? high : math.max(highestHeld, high)
+    candidateTrail = highestHeld - 3 * atr14
+    trail := strategy.position_size[1] <= 0 ? candidateTrail : math.max(trail, candidateTrail)
+else
+    highestHeld := na
+    trail := na
+long_exit_condition = switch exitMode
+    "下穿52减300" => close_cross_under_ema52_minus_300
+    "低于52减300" => close < ema52_minus_300
+    "低于52" => close < ema52
+    "连续2日低于52" => close < ema52 and close[1] < ema52[1]
+    => close < ema52_minus_300 or close < trail
+long_stop_loss = active and in_position and long_exit_condition
+
+short_stop_loss = active and in_short_position and close_cross_over_ema52
+
+if long_entry
+    strategy.entry("多单", strategy.long)
+    first_trade_opened := true  // 标记第一单已开
+
+if short_entry
+    strategy.entry("空单", strategy.short)
+
+if long_stop_loss
+    strategy.close("多单", comment="被动止盈/止损")
+
+if short_stop_loss
+    strategy.close("空单", comment="空单止损")
+
+p_ema21 = plot(ema21, "EMA快线", color=color.blue, linewidth=2)
+p_ema52 = plot(ema52, "EMA52", color=color.orange, linewidth=2)
+p_ema144 = plot(ema144, "EMA144", color=color.gray, linewidth=2)
+plot(exitMode == "3ATR收盘追踪" and in_position ? trail : na, "3ATR追踪线", color=color.fuchsia, style=plot.style_linebr)
+
+
+
+
+segment_bgcolor = structural ? (struct_up ? color.new(color.lime, 88) : struct_down ? color.new(color.red, 88) : color.new(color.orange, 88)) :
+                  is_uptrend_segment ? color.new(color.lime, 88) :
+                  is_purple_breakout_attempt ? color.new(color.purple, 88) :
+                  is_transition_after_uptrend ? color.new(color.orange, 88) :
+                  is_downtrend_segment ? color.new(color.red, 88) : color.new(color.gray, 88)
+
+bgcolor(segment_bgcolor, title="线段背景色")
+
+alertcondition(long_entry, "做多信号", "{{ticker}} 均线策略做多入场 | 周期:{{interval}} | 价格:{{close}}")
+alertcondition(short_entry, "做空信号", "{{ticker}} 均线策略做空入场 | 周期:{{interval}} | 价格:{{close}}")
+alertcondition(long_stop_loss, "多单退出", "{{ticker}} 多单被动止盈/止损 | 周期:{{interval}} | 价格:{{close}}")
+alertcondition(short_stop_loss, "空单止损", "{{ticker}} 空单止损出场 | 周期:{{interval}} | 价格:{{close}}")
