@@ -80,8 +80,14 @@ function run(v,{from=start,to=cutoff,initial=10000,notional=10000,slip=0,fee=.00
   for(let i=1;i<bars.length;i++){
     const r=bars[i],p=bars[i-1];if(r.t<from||r.t>=to)continue;
     if(pending){
-      const px=r.o*(1+pending.side*(pending.kind==='entry'?1:-1)*slip);
-      if(pending.kind==='entry'){
+      const px=r.o*(1+pending.side*(pending.kind==='entry'||pending.kind==='reverse'?1:-1)*slip);
+      if(pending.kind==='reverse'){
+        const exitFee=pos.qty*px*fee,net=pos.qty*pos.side*(px-pos.entry)-pos.fee-exitFee;
+        cash+=pos.qty*pos.side*(px-pos.entry)-exitFee;fees+=exitFee;
+        trades.push({entryDate:date(pos.t),exitDate:date(r.t),side:pos.side,entry:pos.entry,exit:px,net,returnPct:net/notional*100,days:(r.t-pos.t)/DAY,reason:pending.reason,mfePct:(pos.side===1?pos.maxHigh/pos.entry-1:1-pos.minLow/pos.entry)*100});
+        const entryFee=notional*fee;cash-=entryFee;fees+=entryFee;
+        pos={side:pending.side,qty:notional/px,entry:px,t:r.t,signal:pending.t,fee:entryFee,maxHigh:r.h,minLow:r.l,trail:NaN};
+      }else if(pending.kind==='entry'){
         const qty=notional/px,entryFee=notional*fee;cash-=entryFee;fees+=entryFee;
         pos={side:pending.side,qty,entry:px,t:r.t,signal:pending.t,fee:entryFee,maxHigh:r.h,minLow:r.l,trail:NaN};
       }else{
@@ -108,8 +114,15 @@ function run(v,{from=start,to=cutoff,initial=10000,notional=10000,slip=0,fee=.00
     }
     const crossAbove=r.c>efast[i]&&p.c<=efast[i-1],crossBelow=r.c<efast[i]&&p.c>=efast[i-1];
     const filterLong=v.regime==='structural'||v.no4h||r.four.dif<=1500;
+    const trigger=v.regime==='structural'?r.c>efast[i]:crossAbove||(v.rearm&&state.long&&!states[i-1].long&&r.c>efast[i]);
+    const trendPass=!v.filter||v.filter({i,r,bars,efast,e52});
+    const longSignal=trigger&&longAllowed&&filterLong&&trendPass;
+    const shortSignal=v.short&&crossBelow&&state.short&&r.four.dea>=-1500&&(first||v.shortFirst);
     let reason=null;
-    if(pos){
+    if(pos&&v.reverse&&((pos.side===-1&&longSignal)||(pos.side===1&&shortSignal))){
+      pending={kind:'reverse',side:-pos.side,t:r.t,reason:pos.side===1?'Reverse long to short':'Reverse short to long'};
+      if(pending.side===1)first=true;
+    }else if(pos){
       if(pos.side===-1){if(r.c>e52[i]&&p.c<=e52[i-1])reason='EMA52 cross';}
       else if(v.exit==='cross'){if(r.c<e52[i]-300&&p.c>=e52[i-1]-300)reason='EMA52-300 cross';}
       else if(v.exit==='level'){if(r.c<e52[i]-300)reason='EMA52-300 level';}
@@ -120,10 +133,8 @@ function run(v,{from=start,to=cutoff,initial=10000,notional=10000,slip=0,fee=.00
       else if(v.exit==='trail'){if(r.c<e52[i]-300||r.c<pos.trail)reason=r.c<pos.trail?'ATR trail close':'EMA52-300 level';}
       if(reason)pending={kind:'exit',side:pos.side,t:r.t,reason};
     }else{
-      const trigger=v.regime==='structural'?r.c>efast[i]:crossAbove||(v.rearm&&state.long&&!states[i-1].long&&r.c>efast[i]);
-      const trendPass=!v.filter||v.filter({i,r,bars,efast,e52});
-      if(trigger&&longAllowed&&filterLong&&trendPass){pending={kind:'entry',side:1,t:r.t};first=true;}
-      else if(v.short&&crossBelow&&state.short&&r.four.dea>=-1500&&first)pending={kind:'entry',side:-1,t:r.t};
+      if(longSignal){pending={kind:'entry',side:1,t:r.t};first=true;}
+      else if(shortSignal)pending={kind:'entry',side:-1,t:r.t};
     }
     curve.push({date:date(r.t),equity,close:r.c,state:state.name,side:pos?.side||0,emaFast:efast[i],ema52:e52[i],dea:r.dea,fourDif:r.four.dif,priceCross:crossAbove,longAllowed,filterLong});
     if(pending)signals.push({date:date(r.t),...pending});

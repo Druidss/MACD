@@ -1,6 +1,7 @@
 //@version=5
 // BTC spot daily comparison; local engine results in backtest/REPORT.md.
-// Original strategy preserved in MACD.pine. Baseline uses normalized sizing; native TV parity not yet verified.
+// Original strategy preserved in MACD.pine. Default: EMA25 two-way reversal, long EMA52-2ATR exit.
+// Normalized sizing; native TradingView parity not yet verified.
 strategy("BTC 1D MACD 回测对比",
          shorttitle="MACD 1D Compare",
          overlay=true,
@@ -13,14 +14,16 @@ strategy("BTC 1D MACD 回测对比",
          margin_long=0, margin_short=0)
 
 
-mode = input.string("原策略21多空", "方案", options=["原策略21多空", "仅做多25", "状态补入25（探索）", "结构线段25（验证较差）"])
-exitMode = input.string("下穿52减300", "多单退出", options=["下穿52减300", "低于52减300", "下穿52减2ATR", "低于52减2ATR", "低于52", "连续2日低于52", "3ATR收盘追踪"])
+mode = input.string("双向反手25", "方案", options=["原策略21多空", "仅做多25", "空仓开仓多空25", "双向反手25", "状态补入25（探索）", "结构线段25（验证较差）"])
+exitMode = input.string("低于52减2ATR", "多单退出", options=["下穿52减300", "低于52减300", "下穿52减2ATR", "低于52减2ATR", "低于52", "连续2日低于52", "3ATR收盘追踪"])
 startDate = input.time(timestamp("01 Jan 2024 00:00 +0000"), "开始（UTC）")
 endDate = input.time(timestamp("07 Sep 2026 00:00 +0000"), "结束（UTC，不含）")
 active = time >= startDate and time < endDate
 structural = mode == "结构线段25（验证较差）"
 rearm = mode == "状态补入25（探索）"
-allowShort = mode == "原策略21多空"
+allowReverse = mode == "双向反手25"
+allowShortFirst = allowReverse or mode == "空仓开仓多空25"
+allowShort = mode == "原策略21多空" or allowShortFirst
 if not timeframe.isdaily or timeframe.multiplier != 1
     runtime.error("请使用标准1D日线图")
 
@@ -166,10 +169,10 @@ cross_entry = ta.crossover(close, ema21)
 state_entry = rearm and original_long_zone and not original_long_zone[1] and close > ema21
 entry_trigger = structural ? close > ema21 : (cross_entry or state_entry)
 
-long_entry = active and entry_trigger and in_long_signal_zone and macd_4h_filter and rangePass and not has_any_position
+long_entry = active and entry_trigger and in_long_signal_zone and macd_4h_filter and rangePass and (allowReverse ? not in_position : not has_any_position)
 
 dea_4h_filter = dea_4h >= min_4h_dea
-short_entry = active and allowShort and ta.crossunder(close, ema21) and is_downtrend_segment and dea_4h_filter and not has_any_position and first_trade_opened
+short_entry = active and allowShort and ta.crossunder(close, ema21) and is_downtrend_segment and dea_4h_filter and (allowReverse ? not in_short_position : not has_any_position) and (first_trade_opened or allowShortFirst)
 
 ema52_minus_300 = ema52 - 300
 // Dynamic EMA anchor, not entry-price stop or ratcheting highest-price trail.
@@ -206,10 +209,11 @@ if long_entry
 if short_entry
     strategy.entry("空单", strategy.short)
 
-if long_stop_loss
+// Opposite entries reverse the net position. Suppress an additional close on that bar.
+if long_stop_loss and not short_entry
     strategy.close("多单", comment="被动止盈/止损")
 
-if short_stop_loss
+if short_stop_loss and not long_entry
     strategy.close("空单", comment="空单止损")
 
 p_ema21 = plot(ema21, "EMA快线", color=color.blue, linewidth=2)

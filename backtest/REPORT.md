@@ -2,6 +2,7 @@
 
 后续实验：[横盘过滤结果](FILTER_REPORT.md)。
 后续实验：[EMA52−2ATR退出](ATR_STOP_REPORT.md)。
+后续实验：[双向反手](REVERSAL_REPORT.md)。
 
 ## 结论
 
