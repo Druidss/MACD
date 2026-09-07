@@ -119,7 +119,8 @@ function run(v,{from=start,to=cutoff,initial=10000,notional=10000,slip=0,fee=.00
       if(reason)pending={kind:'exit',side:pos.side,t:r.t,reason};
     }else{
       const trigger=v.regime==='structural'?r.c>efast[i]:crossAbove||(v.rearm&&state.long&&!states[i-1].long&&r.c>efast[i]);
-      if(trigger&&longAllowed&&filterLong){pending={kind:'entry',side:1,t:r.t};first=true;}
+      const trendPass=!v.filter||v.filter({i,r,bars,efast,e52});
+      if(trigger&&longAllowed&&filterLong&&trendPass){pending={kind:'entry',side:1,t:r.t};first=true;}
       else if(v.short&&crossBelow&&state.short&&r.four.dea>=-1500&&first)pending={kind:'entry',side:-1,t:r.t};
     }
     curve.push({date:date(r.t),equity,close:r.c,state:state.name,side:pos?.side||0,emaFast:efast[i],ema52:e52[i],dea:r.dea,fourDif:r.four.dif,priceCross:crossAbove,longAllowed,filterLong});
@@ -171,3 +172,4 @@ assert.equal(synthetic[1].long,false);assert.equal(synthetic[2].name,'up');
 // An under-zero attempt remains active even when DEA leaves its -60 threshold.
 assert.equal(originalStates([-100,-50,-500].map(dea=>({dea})))[2].long,true);
 console.log(JSON.stringify({selected:selected.id,table:[...all,...exploratory].map(r=>({id:r.config.id,full:r.full.returnPct,dd:r.full.closeDD,realized:r.full.realizedPct,train:r.train.returnPct,validation:r.validation.returnPct,test:r.test.returnPct})),checks:'OHLC continuity, intrabar mapping, prefix invariance, state boundaries and accounting passed'},null,2));
+export { run, daily, compact, periods, csv, dir };

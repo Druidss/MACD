@@ -43,6 +43,13 @@ groupFilter = "入场过滤条件"
 max_4h_dif = input.float(1500.0, "4小时MACD快线上限", group=groupFilter, tooltip="4小时周期的MACD DIF值不能超过此阈值")
 min_4h_dea = input.float(-1500.0, "4小时DEA下限", group=groupFilter, tooltip="4小时DEA低于此值时不开空单")
 
+groupRange = "横盘过滤（探索，仅过滤多单入场）"
+rangeMode = input.string("关闭", "过滤方法", options=["关闭", "ADX", "效率比ER", "EMA52斜率", "均线间距", "ADX与斜率", "水平震荡排除"], group=groupRange)
+adxMin = input.float(20, "ADX14下限", minval=0, group=groupRange)
+erMin = input.float(0.2, "ER20下限", minval=0, maxval=1, group=groupRange)
+slopeMin = input.float(0.1, "EMA52五日变化/ATR14阈值", minval=0, group=groupRange)
+gapMin = input.float(0.25, "均线间距/ATR14下限", minval=0, group=groupRange)
+
 
 groupBelowZero = "零轴下突破"
 enable_below_zero = input.bool(true, "启用零轴下突破", group=groupBelowZero)
@@ -55,6 +62,20 @@ below_zero_timeout = input.int(8, "突破超时K线数", minval=1, group=groupBe
 ema21 = ta.ema(close, ema21_length)
 ema52 = ta.ema(close, ema52_length)
 ema144 = ta.ema(close, ema144_length)
+atr14 = ta.atr(14)
+[diPlus, diMinus, adx14] = ta.dmi(14, 14)
+erDistance = math.sum(math.abs(ta.change(close)), 20)
+er20 = erDistance == 0 ? 0 : math.abs(close - close[20]) / erDistance
+slope52 = atr14 > 0 ? (ema52 - ema52[5]) / atr14 : 0
+emaGap = atr14 > 0 ? (ema21 - ema52) / atr14 : 0
+rangePass = switch rangeMode
+    "ADX" => adx14 >= adxMin
+    "效率比ER" => er20 >= erMin
+    "EMA52斜率" => slope52 >= slopeMin
+    "均线间距" => emaGap >= gapMin
+    "ADX与斜率" => adx14 >= adxMin and slope52 >= slopeMin
+    "水平震荡排除" => not na(er20) and not na(slope52) and not (er20 < erMin and math.abs(slope52) < slopeMin)
+    => true
 
 [dif, dea, macd_hist] = ta.macd(close, macd_fast, macd_slow, macd_signal)
 
@@ -145,7 +166,7 @@ cross_entry = ta.crossover(close, ema21)
 state_entry = rearm and original_long_zone and not original_long_zone[1] and close > ema21
 entry_trigger = structural ? close > ema21 : (cross_entry or state_entry)
 
-long_entry = active and entry_trigger and in_long_signal_zone and macd_4h_filter and not has_any_position
+long_entry = active and entry_trigger and in_long_signal_zone and macd_4h_filter and rangePass and not has_any_position
 
 dea_4h_filter = dea_4h >= min_4h_dea
 short_entry = active and allowShort and ta.crossunder(close, ema21) and is_downtrend_segment and dea_4h_filter and not has_any_position and first_trade_opened
@@ -154,7 +175,6 @@ ema52_minus_300 = ema52 - 300
 close_cross_under_ema52_minus_300 = ta.crossunder(close, ema52_minus_300)
 close_cross_over_ema52 = ta.crossover(close, ema52)
 
-atr14 = ta.atr(14)
 var float highestHeld = na
 var float trail = na
 if in_position
@@ -191,6 +211,11 @@ p_ema21 = plot(ema21, "EMA快线", color=color.blue, linewidth=2)
 p_ema52 = plot(ema52, "EMA52", color=color.orange, linewidth=2)
 p_ema144 = plot(ema144, "EMA144", color=color.gray, linewidth=2)
 plot(exitMode == "3ATR收盘追踪" and in_position ? trail : na, "3ATR追踪线", color=color.fuchsia, style=plot.style_linebr)
+plot(adx14, "过滤ADX14", display=display.data_window)
+plot(er20, "过滤ER20", display=display.data_window)
+plot(slope52, "EMA52五日变化/ATR14", display=display.data_window)
+plot(emaGap, "均线间距/ATR14", display=display.data_window)
+plotchar(active and entry_trigger and in_long_signal_zone and macd_4h_filter and not has_any_position and not rangePass, title="横盘过滤拦截", char="×", location=location.belowbar, color=color.gray, size=size.tiny)
 
 
 
